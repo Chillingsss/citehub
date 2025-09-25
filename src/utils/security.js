@@ -1,0 +1,128 @@
+import axios from "axios";
+import { getDecryptedApiUrl } from "./apiConfig";
+
+export async function loginUser(username, password) {
+	const formData = new FormData();
+	formData.append("operation", "login");
+	formData.append("json", JSON.stringify({ username: username, password }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function checkPasswordReset(username) {
+	const formData = new FormData();
+	formData.append("operation", "checkPasswordReset");
+	formData.append("json", JSON.stringify({ username }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function sendPasswordResetOTP(username) {
+	const formData = new FormData();
+	formData.append("operation", "sendPasswordResetOTP");
+	formData.append("json", JSON.stringify({ username }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function sendPasswordForgotOTP(email) {
+	const formData = new FormData();
+	formData.append("operation", "sendPasswordForgotOTP");
+	formData.append("json", JSON.stringify({ email }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function verifyOTP(username, otp) {
+	const formData = new FormData();
+	formData.append("operation", "verifyOTP");
+	formData.append("json", JSON.stringify({ username, otp }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function verifyPasswordResetOTP(username, otp, newPassword) {
+	const formData = new FormData();
+	formData.append("operation", "verifyPasswordResetOTP");
+	formData.append("json", JSON.stringify({ username, otp, newPassword }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function verifyPasswordForgotOTP(email, newPassword) {
+	const formData = new FormData();
+	formData.append("operation", "verifyPasswordForgotOTP");
+	formData.append("json", JSON.stringify({ email, newPassword }));
+
+	const apiUrl = getDecryptedApiUrl();
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
