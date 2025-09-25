@@ -2,7 +2,6 @@
 	"name": "socialtrack",
 	"version": "0.1.0",
 	"private": true,
-	"homepage": "https://coc-studentinfo.net/cite/socialtrack",
 	"dependencies": {
 		"@radix-ui/react-label": "^2.1.7",
 		"@radix-ui/react-slot": "^1.2.3",
