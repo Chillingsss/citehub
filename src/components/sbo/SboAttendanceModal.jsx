@@ -42,6 +42,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		return philippinesTime.toISOString().split("T")[0]; // Today's date in YYYY-MM-DD format
 	});
 	const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+	const [recentlyScanned, setRecentlyScanned] = useState(new Set());
+	const recentlyScannedRef = useRef(new Set());
 	const videoRef = useRef(null);
 	const codeReader = useRef(null);
 	const scrollContainerRef = useRef(null);
@@ -61,6 +63,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 			if (codeReader.current) {
 				codeReader.current.reset();
 			}
+			setRecentlyScanned(new Set()); // Clear recently scanned codes when component unmounts
+			recentlyScannedRef.current = new Set(); // Clear ref as well
 		};
 	}, []);
 
@@ -87,6 +91,10 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 	useEffect(() => {
 		tribesRef.current = tribes;
 	}, [tribes]);
+
+	useEffect(() => {
+		recentlyScannedRef.current = recentlyScanned;
+	}, [recentlyScanned]);
 
 	const scrollToTop = () => {
 		if (scrollContainerRef.current) {
@@ -395,12 +403,15 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 			videoRef.current.srcObject = null;
 		}
 		setShowScanner(false);
+		setRecentlyScanned(new Set()); // Clear recently scanned codes when stopping scanner
+		recentlyScannedRef.current = new Set(); // Clear ref as well
 		toast.success("Scanner stopped.", {
 			duration: 2000,
 		});
 	};
 
 	const handleQRScanResult = async (qrText) => {
+		// Prevent processing if already loading
 		if (loading) {
 			console.log("Already processing a scan, skipping...");
 			return;
@@ -410,6 +421,36 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		if (qrText.includes("student_id:")) {
 			studentId = qrText.split("student_id:")[1].trim();
 		}
+
+		// Check if this specific QR code was recently scanned using ref for immediate check
+		if (recentlyScannedRef.current.has(studentId)) {
+			console.log("QR code recently scanned, skipping duplicate processing...");
+			toast("QR code already processed recently", {
+				icon: "⚠️",
+				duration: 2000,
+			});
+			return;
+		}
+
+		// Immediately add to ref and state to prevent duplicate processing
+		recentlyScannedRef.current.add(studentId);
+		setRecentlyScanned((prev) => new Set(prev).add(studentId));
+
+		// Show immediate feedback that QR code was detected
+		toast(`QR Code detected: ${studentId}`, {
+			icon: "📱",
+			duration: 2000,
+		});
+
+		// Remove from recently scanned set after 3 seconds
+		setTimeout(() => {
+			setRecentlyScanned((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(studentId);
+				return newSet;
+			});
+			recentlyScannedRef.current.delete(studentId);
+		}, 3000);
 
 		// Get current students dynamically using refs to avoid closure issues
 		let currentStudents = [];
@@ -585,79 +626,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		if (record.attendance_timeIn && record.attendance_timeOut)
 			return "Completed";
 		return "Absent";
-	};
-
-	// Function to sort students by newest attendance first for selected date
-	const sortStudentsByNewestAttendanceForDate = (students) => {
-		if (!selectedSession) {
-			return students;
-		}
-
-		const filteredRecords = getFilteredAttendanceByDate();
-
-		return [...students].sort((a, b) => {
-			// Get attendance records for both students in the selected session and date
-			const recordA = filteredRecords.find(
-				(r) =>
-					r.attendance_studentId === a.user_id &&
-					r.attendance_sessionId === selectedSession.attendanceS_id
-			);
-			const recordB = filteredRecords.find(
-				(r) =>
-					r.attendance_studentId === b.user_id &&
-					r.attendance_sessionId === selectedSession.attendanceS_id
-			);
-
-			// Get attendance status for both students
-			const statusA = getStudentAttendanceStatusForDate(a.user_id);
-			const statusB = getStudentAttendanceStatusForDate(b.user_id);
-
-			// Priority order: Completed > Time In > No record
-			const priorityOrder = {
-				Completed: 3,
-				"Time In": 2,
-				"No record": 1,
-				Absent: 0,
-			};
-
-			// First, sort by attendance status priority
-			const priorityA = priorityOrder[statusA] || 0;
-			const priorityB = priorityOrder[statusB] || 0;
-
-			if (priorityA !== priorityB) {
-				return priorityB - priorityA; // Higher priority first
-			}
-
-			// If both have the same status, sort by newest time_in
-			if (recordA && recordB) {
-				const timeA = new Date(recordA.attendance_timeIn).getTime();
-				const timeB = new Date(recordB.attendance_timeIn).getTime();
-				return timeB - timeA; // Newest first
-			}
-
-			// If only one has a record, prioritize the one with attendance
-			if (recordA && !recordB) return -1;
-			if (!recordA && recordB) return 1;
-
-			// If neither has records, maintain original order (alphabetical by name)
-			const nameA = `${a.user_name}`.toLowerCase();
-			const nameB = `${b.user_name}`.toLowerCase();
-			return nameA.localeCompare(nameB);
-		});
-	};
-
-	const filterStudents = (students) => {
-		if (!searchQuery.trim()) {
-			return students;
-		}
-
-		const query = searchQuery.toLowerCase().trim();
-		return students.filter((student) => {
-			const fullName = `${student.user_name}`.toLowerCase();
-			const studentId = student.user_id.toLowerCase();
-
-			return fullName.includes(query) || studentId.includes(query);
-		});
 	};
 
 	const formatTime = (datetime) => {

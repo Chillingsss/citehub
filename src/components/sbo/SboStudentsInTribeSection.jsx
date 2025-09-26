@@ -31,6 +31,7 @@ const SboStudentsInTribeSection = ({
 	const [collapsedYearLevels, setCollapsedYearLevels] = React.useState(
 		new Set()
 	);
+	console.log("selectedSession", selectedSession);
 	const [selectedYearLevelFilter, setSelectedYearLevelFilter] =
 		React.useState("all");
 	const [currentPage, setCurrentPage] = React.useState(1);
@@ -315,7 +316,7 @@ const SboStudentsInTribeSection = ({
 						<span className="font-medium text-gray-700 dark:text-gray-300">
 							{selectedTribe.tribe_name}
 						</span>
-						<span className="text-gray-400">•</span>
+						{/* <span className="text-gray-400">•</span>
 						<span>Attendance:</span>
 						<span
 							className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -331,7 +332,7 @@ const SboStudentsInTribeSection = ({
 								: selectedSession.attendanceS_timeIn === 1
 								? "Time In Active"
 								: "Time Out Active"}
-						</span>
+						</span> */}
 						<span className="text-gray-400">•</span>
 						<span className="font-medium text-gray-700 dark:text-gray-300">
 							{new Date(selectedDate).toLocaleDateString("en-US", {
