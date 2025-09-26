@@ -3,7 +3,7 @@ import CryptoJS from "crypto-js";
 const SECRET_KEY = "sociatrac_api_secret_key";
 const SESSION_KEY = "sociatrac_encrypted_api_url";
 const FALLBACK_API_URL = "https://coc-studentinfo.net/cite/socialtrack/api";
-// const FALLBACK_API_URL = "http://localhost/socialtrack/api";
+// const FALLBACK_API_URL = "http://localhost/api";
 
 export const COOKIE_KEY = "cite_user";
 export const COOKIE_SECRET_KEY = "cite_secret_key";

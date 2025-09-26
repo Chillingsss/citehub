@@ -95,9 +95,6 @@ const AttendanceRecordsModal = ({ isOpen, onClose, userId }) => {
 										>
 											<div className="flex flex-col gap-2 mb-3 sm:flex-row sm:justify-between sm:items-start sm:gap-0">
 												<div>
-													<h3 className="text-sm font-semibold text-gray-800 sm:text-base dark:text-gray-200">
-														{record.session_name || "Unknown Session"}
-													</h3>
 													<p className="text-xs text-gray-600 sm:text-sm dark:text-gray-400">
 														{formatDate(record.attendance_timeIn)}
 													</p>
