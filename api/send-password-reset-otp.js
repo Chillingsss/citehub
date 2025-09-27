@@ -36,24 +36,7 @@ export default async function handler(req, res) {
 
 	const origin = req.headers.origin;
 
-	// Check if the origin is in our allowed list
-	if (allowedOrigins.includes(origin)) {
-		res.setHeader("Access-Control-Allow-Origin", origin);
-	} else {
-		// For development, allow localhost and 127.0.0.1
-		if (
-			origin &&
-			(origin.includes("localhost") || origin.includes("127.0.0.1"))
-		) {
-			res.setHeader("Access-Control-Allow-Origin", origin);
-		} else {
-			res.setHeader(
-				"Access-Control-Allow-Origin",
-				"https://socialtrack.vercel.app"
-			);
-		}
-	}
-
+	// Set CORS headers for all requests first
 	res.setHeader("Vary", "Origin");
 	res.setHeader(
 		"Access-Control-Allow-Headers",
@@ -62,7 +45,15 @@ export default async function handler(req, res) {
 	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, GET");
 	res.setHeader("Access-Control-Allow-Credentials", "true");
 
+	// Allow the requesting origin for development
+	if (origin) {
+		res.setHeader("Access-Control-Allow-Origin", origin);
+	} else {
+		res.setHeader("Access-Control-Allow-Origin", "*");
+	}
+
 	if (req.method === "OPTIONS") {
+		console.log("Handling OPTIONS request for origin:", origin);
 		return res.status(204).end();
 	}
 
