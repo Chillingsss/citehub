@@ -24,39 +24,17 @@ function createTransport() {
 }
 
 export default async function handler(req, res) {
-	// Enhanced CORS to allow local dev and production
-	const allowedOrigins = [
-		"http://localhost:3000",
-		"http://localhost:3001",
-		"http://127.0.0.1:3000",
-		"http://127.0.0.1:3001",
-		"https://socialtrack.vercel.app",
-		"https://citehub.vercel.app",
-	];
-
-	const origin = req.headers.origin;
-
-	// Set CORS headers for all requests first
+	// Basic CORS to allow local dev to call the deployed API
+	const origin = req.headers.origin || "*";
+	res.setHeader("Access-Control-Allow-Origin", origin);
 	res.setHeader("Vary", "Origin");
 	res.setHeader(
 		"Access-Control-Allow-Headers",
-		"Content-Type, Authorization, X-Requested-With, Accept, Origin"
+		"Content-Type, Authorization, X-Requested-With"
 	);
-	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, GET");
-	res.setHeader("Access-Control-Allow-Credentials", "true");
-
-	// Allow the requesting origin for development and production
-	if (origin && allowedOrigins.includes(origin)) {
-		res.setHeader("Access-Control-Allow-Origin", origin);
-	} else if (origin) {
-		// For any other origin, still allow it (for development flexibility)
-		res.setHeader("Access-Control-Allow-Origin", origin);
-	} else {
-		res.setHeader("Access-Control-Allow-Origin", "*");
-	}
+	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 
 	if (req.method === "OPTIONS") {
-		console.log("Handling OPTIONS request for origin:", origin);
 		return res.status(204).end();
 	}
 
