@@ -424,7 +424,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 
 		// Check if this specific QR code was recently scanned using ref for immediate check
 		if (recentlyScannedRef.current.has(studentId)) {
-			console.log("QR code recently scanned, skipping duplicate processing...");
 			toast("QR code already processed recently", {
 				icon: "⚠️",
 				duration: 2000,
@@ -450,7 +449,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 				return newSet;
 			});
 			recentlyScannedRef.current.delete(studentId);
-		}, 3000);
+		}, 5000);
 
 		// Get current students dynamically using refs to avoid closure issues
 		let currentStudents = [];
