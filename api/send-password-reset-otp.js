@@ -24,8 +24,14 @@ function createTransport() {
 }
 
 export default async function handler(req, res) {
-	// Basic CORS to allow local dev to call the deployed API
-	const origin = req.headers.origin || "*";
+	const allowedOrigins = [
+		"http://localhost:3000",
+		"https://socialtrack.vercel.app",
+	];
+	const origin = allowedOrigins.includes(req.headers.origin)
+		? req.headers.origin
+		: allowedOrigins[0];
+
 	res.setHeader("Access-Control-Allow-Origin", origin);
 	res.setHeader("Vary", "Origin");
 	res.setHeader(
@@ -34,14 +40,13 @@ export default async function handler(req, res) {
 	);
 	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 
+	// OPTIONS preflight ends here
 	if (req.method === "OPTIONS") {
 		return res.status(204).end();
 	}
 
 	if (req.method !== "POST") {
-		return res
-			.status(405)
-			.json({ status: "error", message: "Method Not Allowed" });
+		return res.status(405).json({ message: "Method Not Allowed" });
 	}
 
 	try {
