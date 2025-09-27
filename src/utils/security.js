@@ -126,3 +126,19 @@ export async function verifyPasswordForgotOTP(email, newPassword) {
 		throw error;
 	}
 }
+
+export async function sendPasswordResetOtpMail(email, fullName) {
+	const hostname =
+		typeof window !== "undefined" ? window.location.hostname : "";
+	const isLocal = /^(localhost|127\.0\.0\.1)$/i.test(hostname);
+	const baseOverride = process.env.REACT_APP_MAIL_API_BASE;
+	console.log("baseOverride", baseOverride);
+	const endpoint = baseOverride
+		? `${baseOverride.replace(/\/$/, "")}/api/send-password-reset-otp`
+		: isLocal
+		? "http://localhost:4001/send-password-reset-otp"
+		: "/api/send-password-reset-otp";
+
+	const { data } = await axios.post(endpoint, { email, fullName });
+	return data;
+}

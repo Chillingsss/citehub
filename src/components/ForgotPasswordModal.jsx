@@ -13,7 +13,10 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "@radix-ui/react-label";
-import { verifyPasswordForgotOTP } from "../utils/security";
+import {
+	verifyPasswordForgotOTP,
+	sendPasswordResetOtpMail,
+} from "../utils/security";
 import toast from "react-hot-toast";
 
 // Password validation function
@@ -112,13 +115,18 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 		setError("");
 
 		try {
-			// Simply proceed to password reset step
-			// The actual email validation will happen when the user tries to reset the password
-			setStep(2);
-			toast.success("Please create a new password.");
+			// Send OTP email using the new nodemailer function
+			const result = await sendPasswordResetOtpMail(email, "User");
+
+			if (result.status === "success") {
+				setStep(2);
+				toast.success("OTP sent to your email. Please check your inbox.");
+			} else {
+				setError(result.message || "Failed to send OTP. Please try again.");
+			}
 		} catch (err) {
 			console.error("Email check error:", err);
-			setError("Failed to verify email. Please try again.");
+			setError("Failed to send OTP email. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
