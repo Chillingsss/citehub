@@ -9,6 +9,8 @@ import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ThemeLoader from "./components/ThemeLoader";
 import SboDashboard from "./pages/sbo/SboDashboard";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
 	useEffect(() => {
@@ -87,6 +89,8 @@ function App() {
 						/>
 					</Routes>
 				</div>
+				<Analytics />
+				<SpeedInsights />
 			</ThemeLoader>
 		</ThemeProvider>
 	);
