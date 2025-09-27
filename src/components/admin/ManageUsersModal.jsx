@@ -343,7 +343,7 @@ export default function ManageUsersModal({ isOpen, onClose }) {
 					</div>
 
 					{/* Main Content */}
-					<div className="overflow-hidden flex-1 px-6 min-h-0 bg-gray-50 dark:bg-gray-900/50">
+					<div className="flex-1 px-6 min-h-0 bg-gray-50 dark:bg-gray-900/50">
 						{/* Desktop Layout */}
 						<div className="hidden h-full md:flex">
 							{/* Left Panel - Create User Form */}
@@ -696,7 +696,7 @@ export default function ManageUsersModal({ isOpen, onClose }) {
 						<div className="flex flex-col h-full min-h-0 md:hidden">
 							{activeTab === "create" ? (
 								/* Mobile Create User Form */
-								<div className="flex flex-col flex-1 bg-white dark:bg-gray-800">
+								<div className="flex flex-col h-full bg-white dark:bg-gray-800">
 									<div className="flex-shrink-0 p-4 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-200 dark:from-emerald-900/20 dark:to-green-900/20 dark:border-emerald-800">
 										<div className="flex gap-3 items-center">
 											<div className="p-2 bg-emerald-100 rounded-lg dark:bg-emerald-900/30">
@@ -712,7 +712,7 @@ export default function ManageUsersModal({ isOpen, onClose }) {
 											</div>
 										</div>
 									</div>
-									<div className="overflow-y-auto flex-1 p-4 min-h-0">
+									<div className="flex-1 overflow-y-auto p-4 min-h-0">
 										<form onSubmit={handleAddUser} className="space-y-6">
 											{/* Role Selection */}
 											<div className="space-y-3">
@@ -1000,7 +1000,7 @@ export default function ManageUsersModal({ isOpen, onClose }) {
 								</div>
 							) : (
 								/* Mobile User List */
-								<div className="overflow-hidden flex-1 bg-white dark:bg-gray-800">
+								<div className="flex flex-col h-full bg-white dark:bg-gray-800">
 									<UserList
 										users={users}
 										loading={loading}
