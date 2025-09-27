@@ -45,8 +45,11 @@ export default async function handler(req, res) {
 	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, GET");
 	res.setHeader("Access-Control-Allow-Credentials", "true");
 
-	// Allow the requesting origin for development
-	if (origin) {
+	// Allow the requesting origin for development and production
+	if (origin && allowedOrigins.includes(origin)) {
+		res.setHeader("Access-Control-Allow-Origin", origin);
+	} else if (origin) {
+		// For any other origin, still allow it (for development flexibility)
 		res.setHeader("Access-Control-Allow-Origin", origin);
 	} else {
 		res.setHeader("Access-Control-Allow-Origin", "*");
