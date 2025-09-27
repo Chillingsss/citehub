@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import { COOKIE_KEY, COOKIE_SECRET_KEY } from "../utils/apiConfig";
+import toast from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
 export default function PostCreation({ userId, onPostCreated, profile }) {
 	const [caption, setCaption] = useState("");
@@ -177,6 +179,18 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 				userLevel
 			);
 			console.log("New post created:", result);
+			console.log("User level:", userLevel);
+
+			// Show success toast based on user level
+			if (userLevel === "Student") {
+				toast.success("Post successful but needs approval", {
+					duration: 3000,
+				});
+			} else {
+				toast.success("Post successful", {
+					duration: 2000,
+				});
+			}
 
 			// Reset form
 			setCaption("");
@@ -192,6 +206,9 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 			}
 		} catch (error) {
 			console.error("Error creating post:", error);
+			toast.error("Failed to create post. Please try again.", {
+				duration: 3000,
+			});
 		} finally {
 			setIsPosting(false);
 		}
@@ -237,92 +254,94 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 	};
 
 	return (
-		<div className="p-2 lg:p-4 bg-gray-50 rounded-2xl shadow-sm dark:bg-[#282828]">
-			<form onSubmit={handlePost}>
-				{/* Header with Avatar */}
-				<div className="flex items-center mb-3 lg:mb-4">
-					<div
-						className="flex justify-center items-center w-10 h-10 text-xs font-semibold text-black dark:text-gray-200 bg-gray-400/50 rounded-full sm:w-10 sm:h-10 sm:text-sm cursor-pointer"
-						onClick={(e) => handleProfileClick(userId, e)}
-					>
-						{`${profile?.user_name?.charAt(0) || ""}`}
-					</div>
-					<div className="flex-1">
-						<textarea
-							className={`w-full p-2 lg:p-3 text-gray-900 bg-gray-50 rounded-2xl border-0 resize-none placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200 dark:bg-[#282828] dark:text-gray-100 dark:placeholder-gray-400 dark:focus:bg-gray-700/50 dark:focus:ring-blue-400 ${
-								isExpanded ? "min-h-[100px]" : "min-h-[50px]"
-							}`}
-							placeholder={`What's new?`}
-							value={caption}
-							onChange={(e) => setCaption(e.target.value)}
-							onClick={handleTextareaClick}
-							rows={isExpanded ? 4 : 2}
-						/>
-					</div>
-				</div>
-
-				{/* Image Previews */}
-				{imagePreviews.length > 0 && (
-					<div className="mb-3 lg:mb-4">
-						<div className="grid grid-cols-2 gap-2 lg:gap-3 p-2 lg:p-4 bg-gray-50 rounded-xl sm:grid-cols-3 md:grid-cols-4 dark:bg-gray-700">
-							{imagePreviews.map((preview, index) => (
-								<div key={index} className="relative group">
-									<img
-										src={preview}
-										alt={`Preview ${index + 1}`}
-										className="object-cover w-full h-24 rounded-lg border border-gray-200 dark:border-gray-600"
-									/>
-									<button
-										type="button"
-										onClick={() => removeImage(index)}
-										className="flex absolute -top-2 -right-2 justify-center items-center w-6 h-6 text-sm font-bold text-white bg-red-500 rounded-full shadow-lg transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 hover:bg-red-600"
-										title="Remove image"
-									>
-										×
-									</button>
-								</div>
-							))}
+		<>
+			<Toaster position="top-right" />
+			<div className="p-2 lg:p-4 bg-gray-50 rounded-2xl shadow-sm dark:bg-[#282828]">
+				<form onSubmit={handlePost}>
+					{/* Header with Avatar */}
+					<div className="flex items-center mb-3 lg:mb-4">
+						<div
+							className="flex justify-center items-center w-10 h-10 text-xs font-semibold text-black dark:text-gray-200 bg-gray-400/50 rounded-full sm:w-10 sm:h-10 sm:text-sm cursor-pointer"
+							onClick={(e) => handleProfileClick(userId, e)}
+						>
+							{`${profile?.user_name?.charAt(0) || ""}`}
+						</div>
+						<div className="flex-1">
+							<textarea
+								className={`w-full p-2 lg:p-3 text-gray-900 bg-gray-50 rounded-2xl border-0 resize-none placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200 dark:bg-[#282828] dark:text-gray-100 dark:placeholder-gray-400 dark:focus:bg-gray-700/50 dark:focus:ring-blue-400 ${
+									isExpanded ? "min-h-[100px]" : "min-h-[50px]"
+								}`}
+								placeholder={`What's new?`}
+								value={caption}
+								onChange={(e) => setCaption(e.target.value)}
+								onClick={handleTextareaClick}
+								rows={isExpanded ? 4 : 2}
+							/>
 						</div>
 					</div>
-				)}
 
-				{/* Action Buttons */}
-				<div
-					className={`transition-all duration-300 ${
-						isExpanded
-							? "max-h-20 opacity-100"
-							: "overflow-hidden max-h-0 opacity-0"
-					}`}
-				>
-					<div className="flex justify-between items-center pt-2 lg:pt-3 border-t border-gray-100 dark:border-gray-600">
-						<div className="flex items-center space-x-3 lg:space-x-4">
-							{/* Photo Upload */}
-							<label className="flex items-center px-3 lg:px-4 py-2 space-x-2 text-gray-600 rounded-lg transition-colors duration-200 cursor-pointer hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
-								<svg
-									className="w-5 h-5 text-green-500"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+					{/* Image Previews */}
+					{imagePreviews.length > 0 && (
+						<div className="mb-3 lg:mb-4">
+							<div className="grid grid-cols-2 gap-2 lg:gap-3 p-2 lg:p-4 bg-gray-50 rounded-xl sm:grid-cols-3 md:grid-cols-4 dark:bg-gray-700">
+								{imagePreviews.map((preview, index) => (
+									<div key={index} className="relative group">
+										<img
+											src={preview}
+											alt={`Preview ${index + 1}`}
+											className="object-cover w-full h-24 rounded-lg border border-gray-200 dark:border-gray-600"
+										/>
+										<button
+											type="button"
+											onClick={() => removeImage(index)}
+											className="flex absolute -top-2 -right-2 justify-center items-center w-6 h-6 text-sm font-bold text-white bg-red-500 rounded-full shadow-lg transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 hover:bg-red-600"
+											title="Remove image"
+										>
+											×
+										</button>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Action Buttons */}
+					<div
+						className={`transition-all duration-300 ${
+							isExpanded
+								? "max-h-20 opacity-100"
+								: "overflow-hidden max-h-0 opacity-0"
+						}`}
+					>
+						<div className="flex justify-between items-center pt-2 lg:pt-3 border-t border-gray-100 dark:border-gray-600">
+							<div className="flex items-center space-x-3 lg:space-x-4">
+								{/* Photo Upload */}
+								<label className="flex items-center px-3 lg:px-4 py-2 space-x-2 text-gray-600 rounded-lg transition-colors duration-200 cursor-pointer hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+									<svg
+										className="w-5 h-5 text-green-500"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+										/>
+									</svg>
+									<span className="text-sm font-medium">Photo</span>
+									<input
+										type="file"
+										accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
+										className="hidden"
+										onChange={handleImageChange}
+										multiple
 									/>
-								</svg>
-								<span className="text-sm font-medium">Photo</span>
-								<input
-									type="file"
-									accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
-									className="hidden"
-									onChange={handleImageChange}
-									multiple
-								/>
-							</label>
+								</label>
 
-							{/* Video Upload (placeholder for future) */}
-							{/* <button
+								{/* Video Upload (placeholder for future) */}
+								{/* <button
 								type="button"
 								className="flex items-center px-4 py-2 space-x-2 text-gray-600 rounded-lg transition-colors duration-200 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
 								disabled
@@ -343,8 +362,8 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 								<span className="text-sm font-medium opacity-50">Video</span>
 							</button> */}
 
-							{/* Feeling/Activity (placeholder for future) */}
-							{/* <button
+								{/* Feeling/Activity (placeholder for future) */}
+								{/* <button
 								type="button"
 								className="flex items-center px-4 py-2 space-x-2 text-gray-600 rounded-lg transition-colors duration-200 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
 								disabled
@@ -364,89 +383,89 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 								</svg>
 								<span className="text-sm font-medium opacity-50">Feeling</span>
 							</button> */}
-						</div>
+							</div>
 
-						{/* Post Actions */}
-						<div className="flex items-center space-x-3">
-							{isExpanded && (
-								<button
-									type="button"
-									onClick={handleCancel}
-									className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
-								>
-									Cancel
-								</button>
-							)}
-							<button
-								type="submit"
-								disabled={
-									isPosting || (!caption.trim() && !selectedImages.length)
-								}
-								className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-									isPosting || (!caption.trim() && !selectedImages.length)
-										? "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
-										: "bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 dark:bg-blue-500 dark:hover:bg-blue-600"
-								}`}
-							>
-								{isPosting ? (
-									<div className="flex items-center space-x-2">
-										<svg
-											className="w-4 h-4 animate-spin"
-											fill="none"
-											viewBox="0 0 24 24"
-										>
-											<circle
-												className="opacity-25"
-												cx="12"
-												cy="12"
-												r="10"
-												stroke="currentColor"
-												strokeWidth="4"
-											></circle>
-											<path
-												className="opacity-75"
-												fill="currentColor"
-												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-											></path>
-										</svg>
-										<span>Posting...</span>
-									</div>
-								) : (
-									"Post"
+							{/* Post Actions */}
+							<div className="flex items-center space-x-3">
+								{isExpanded && (
+									<button
+										type="button"
+										onClick={handleCancel}
+										className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
+									>
+										Cancel
+									</button>
 								)}
-							</button>
+								<button
+									type="submit"
+									disabled={
+										isPosting || (!caption.trim() && !selectedImages.length)
+									}
+									className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+										isPosting || (!caption.trim() && !selectedImages.length)
+											? "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
+											: "bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 dark:bg-blue-500 dark:hover:bg-blue-600"
+									}`}
+								>
+									{isPosting ? (
+										<div className="flex items-center space-x-2">
+											<svg
+												className="w-4 h-4 animate-spin"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													className="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													strokeWidth="4"
+												></circle>
+												<path
+													className="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+											<span>Posting...</span>
+										</div>
+									) : (
+										"Post"
+									)}
+								</button>
+							</div>
 						</div>
 					</div>
-				</div>
 
-				{/* Simple action bar when not expanded */}
-				{!isExpanded && (
-					<div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-600">
-						<div className="flex items-center space-x-6">
-							<label className="flex items-center space-x-2 text-gray-500 transition-colors duration-200 cursor-pointer hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-								<svg
-									className="w-5 h-5"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+					{/* Simple action bar when not expanded */}
+					{!isExpanded && (
+						<div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-600">
+							<div className="flex items-center space-x-6">
+								<label className="flex items-center space-x-2 text-gray-500 transition-colors duration-200 cursor-pointer hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
+									<svg
+										className="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+										/>
+									</svg>
+									<span className="text-sm font-medium">Photo</span>
+									<input
+										type="file"
+										accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
+										className="hidden"
+										onChange={handleImageChange}
+										multiple
 									/>
-								</svg>
-								<span className="text-sm font-medium">Photo</span>
-								<input
-									type="file"
-									accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
-									className="hidden"
-									onChange={handleImageChange}
-									multiple
-								/>
-							</label>
-							{/* <button
+								</label>
+								{/* <button
 								type="button"
 								className="flex items-center space-x-2 text-gray-500 transition-colors duration-200 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
 								disabled
@@ -486,10 +505,11 @@ export default function PostCreation({ userId, onPostCreated, profile }) {
 								</svg>
 								<span className="text-sm font-medium opacity-50">Feeling</span>
 							</button> */}
+							</div>
 						</div>
-					</div>
-				)}
-			</form>
-		</div>
+					)}
+				</form>
+			</div>
+		</>
 	);
 }
