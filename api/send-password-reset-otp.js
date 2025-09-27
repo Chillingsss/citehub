@@ -40,8 +40,11 @@ export default async function handler(req, res) {
 	if (allowedOrigins.includes(origin)) {
 		res.setHeader("Access-Control-Allow-Origin", origin);
 	} else {
-		// For development, allow localhost
-		if (origin && origin.includes("localhost")) {
+		// For development, allow localhost and 127.0.0.1
+		if (
+			origin &&
+			(origin.includes("localhost") || origin.includes("127.0.0.1"))
+		) {
 			res.setHeader("Access-Control-Allow-Origin", origin);
 		} else {
 			res.setHeader(
