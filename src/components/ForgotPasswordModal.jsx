@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	X,
 	Mail,
@@ -9,6 +9,7 @@ import {
 	CheckCircle,
 	Check,
 	X as XIcon,
+	Shield,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -92,11 +93,31 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 	const [step, setStep] = useState(1);
 	const [isLoading, setIsLoading] = useState(false);
 	const [email, setEmail] = useState("");
+	const [otp, setOtp] = useState("");
+	const [sentOtp, setSentOtp] = useState("");
+	const [otpTimestamp, setOtpTimestamp] = useState(null);
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [showNewPassword, setShowNewPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [error, setError] = useState("");
+	const [timeLeft, setTimeLeft] = useState(0);
+
+	// Countdown timer effect
+	useEffect(() => {
+		let interval = null;
+		if (otpTimestamp && timeLeft > 0) {
+			interval = setInterval(() => {
+				const currentTime = Date.now();
+				const elapsed = currentTime - otpTimestamp;
+				const remaining = Math.max(0, 10 * 60 * 1000 - elapsed); // 10 minutes
+				setTimeLeft(Math.ceil(remaining / 1000));
+			}, 1000);
+		} else if (timeLeft === 0) {
+			clearInterval(interval);
+		}
+		return () => clearInterval(interval);
+	}, [otpTimestamp, timeLeft]);
 
 	const handleCheckEmail = async () => {
 		if (!email.trim()) {
@@ -119,6 +140,10 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 			const result = await sendPasswordResetOtpMail(email, "User");
 
 			if (result.status === "success") {
+				// Store the OTP and timestamp for verification
+				setSentOtp(result.otp);
+				setOtpTimestamp(result.timestamp);
+				setTimeLeft(600); // 10 minutes in seconds
 				setStep(2);
 				toast.success("OTP sent to your email. Please check your inbox.");
 			} else {
@@ -127,6 +152,47 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 		} catch (err) {
 			console.error("Email check error:", err);
 			setError("Failed to send OTP email. Please try again.");
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleVerifyOTP = async () => {
+		if (!otp.trim()) {
+			setError("Please enter the OTP sent to your email.");
+			return;
+		}
+
+		// Basic OTP validation (6 digits)
+		const otpRegex = /^\d{6}$/;
+		if (!otpRegex.test(otp)) {
+			setError("Please enter a valid 6-digit OTP.");
+			return;
+		}
+
+		// Check if OTP has expired (10 minutes = 600000 milliseconds)
+		const currentTime = Date.now();
+		const otpExpiryTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+		if (otpTimestamp && currentTime - otpTimestamp > otpExpiryTime) {
+			setError("OTP has expired. Please request a new one.");
+			return;
+		}
+
+		setIsLoading(true);
+		setError("");
+
+		try {
+			// Verify the OTP against the sent OTP
+			if (otp === sentOtp) {
+				setStep(3);
+				toast.success("OTP verified successfully!");
+			} else {
+				setError("Invalid OTP. Please check the code and try again.");
+			}
+		} catch (err) {
+			console.error("OTP verification error:", err);
+			setError("Invalid OTP. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -166,7 +232,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 			const data = typeof result === "string" ? JSON.parse(result) : result;
 
 			if (data.success) {
-				setStep(3);
+				setStep(4);
 				toast.success("Password updated successfully!");
 			} else {
 				setError(
@@ -184,6 +250,10 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 	const handleClose = () => {
 		setStep(1);
 		setEmail("");
+		setOtp("");
+		setSentOtp("");
+		setOtpTimestamp(null);
+		setTimeLeft(0);
 		setNewPassword("");
 		setConfirmPassword("");
 		setShowNewPassword(false);
@@ -255,8 +325,75 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 						</div>
 					)}
 
-					{/* Step 2: Enter New Password */}
+					{/* Step 2: Enter OTP */}
 					{step === 2 && (
+						<div className="space-y-4">
+							<div className="text-center">
+								<Shield className="mx-auto mb-4 w-12 h-12 text-green-600 dark:text-green-400" />
+								<h3 className="mb-2 text-lg font-semibold text-green-900 dark:text-green-100">
+									Enter Verification Code
+								</h3>
+								<p className="text-sm text-green-600 dark:text-green-400">
+									We've sent a 6-digit code to <strong>{email}</strong>
+								</p>
+								{timeLeft > 0 && (
+									<p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+										Code expires in: {Math.floor(timeLeft / 60)}:
+										{(timeLeft % 60).toString().padStart(2, "0")}
+									</p>
+								)}
+							</div>
+
+							<div className="space-y-2">
+								<Label className="text-sm font-semibold text-green-800 dark:text-green-300">
+									Verification Code
+								</Label>
+								<Input
+									type="text"
+									value={otp}
+									onChange={(e) =>
+										setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+									}
+									placeholder="Enter 6-digit code"
+									className="px-4 py-3 w-full text-center text-2xl font-mono tracking-widest text-green-900 rounded-2xl border-2 border-green-200 dark:text-green-100 dark:border-gray-600 bg-green-50/50 dark:bg-gray-700/50 focus:outline-none focus:ring-4 focus:ring-green-300/30 dark:focus:ring-green-500/30 focus:border-green-400 dark:focus:border-green-500"
+									maxLength={6}
+								/>
+							</div>
+
+							<div className="text-center">
+								<button
+									onClick={() => {
+										setOtp("");
+										setSentOtp("");
+										setOtpTimestamp(null);
+										setTimeLeft(0);
+										handleCheckEmail();
+									}}
+									className="text-sm text-green-600 transition-colors dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 underline"
+								>
+									Didn't receive the code? Resend
+								</button>
+							</div>
+
+							<Button
+								onClick={handleVerifyOTP}
+								disabled={isLoading || !otp.trim() || otp.length !== 6}
+								className="w-full py-3 px-6 rounded-2xl font-semibold bg-gradient-to-r from-green-700 via-emerald-700 to-green-800 dark:from-green-600 dark:via-emerald-600 dark:to-green-700 text-white hover:from-green-800 hover:via-emerald-800 hover:to-green-900 dark:hover:from-green-700 dark:hover:via-emerald-700 dark:hover:to-green-800 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+							>
+								{isLoading ? (
+									<div className="flex justify-center items-center space-x-3">
+										<div className="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent" />
+										<span>Verifying...</span>
+									</div>
+								) : (
+									"Verify Code"
+								)}
+							</Button>
+						</div>
+					)}
+
+					{/* Step 3: Enter New Password */}
+					{step === 3 && (
 						<div className="space-y-4">
 							<div className="text-center">
 								<LockKeyhole className="mx-auto mb-4 w-12 h-12 text-green-600 dark:text-green-400" />
@@ -347,8 +484,8 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 						</div>
 					)}
 
-					{/* Step 3: Success */}
-					{step === 3 && (
+					{/* Step 4: Success */}
+					{step === 4 && (
 						<div className="space-y-4 text-center">
 							<CheckCircle className="mx-auto mb-4 w-16 h-16 text-green-600 dark:text-green-400" />
 							<h3 className="mb-2 text-xl font-semibold text-green-900 dark:text-green-100">
@@ -384,7 +521,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 					)}
 
 					{/* Navigation */}
-					{step > 1 && step < 3 && (
+					{step > 1 && step < 4 && (
 						<div className="flex justify-between items-center pt-4 border-t border-green-200 dark:border-gray-700">
 							<button
 								onClick={() => {
@@ -395,7 +532,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 								← Back
 							</button>
 							<div className="flex space-x-2">
-								{Array.from({ length: 3 }, (_, i) => (
+								{Array.from({ length: 4 }, (_, i) => (
 									<div
 										key={i}
 										className={`w-2 h-2 rounded-full ${

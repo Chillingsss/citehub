@@ -24,15 +24,40 @@ function createTransport() {
 }
 
 export default async function handler(req, res) {
-	// Basic CORS to allow local dev to call the deployed API
-	const origin = req.headers.origin || "*";
-	res.setHeader("Access-Control-Allow-Origin", origin);
+	// Enhanced CORS to allow local dev and production
+	const allowedOrigins = [
+		"http://localhost:3000",
+		"http://localhost:3001",
+		"http://127.0.0.1:3000",
+		"http://127.0.0.1:3001",
+		"https://socialtrack.vercel.app",
+		"https://citehub.vercel.app",
+	];
+
+	const origin = req.headers.origin;
+
+	// Check if the origin is in our allowed list
+	if (allowedOrigins.includes(origin)) {
+		res.setHeader("Access-Control-Allow-Origin", origin);
+	} else {
+		// For development, allow localhost
+		if (origin && origin.includes("localhost")) {
+			res.setHeader("Access-Control-Allow-Origin", origin);
+		} else {
+			res.setHeader(
+				"Access-Control-Allow-Origin",
+				"https://socialtrack.vercel.app"
+			);
+		}
+	}
+
 	res.setHeader("Vary", "Origin");
 	res.setHeader(
 		"Access-Control-Allow-Headers",
-		"Content-Type, Authorization, X-Requested-With"
+		"Content-Type, Authorization, X-Requested-With, Accept, Origin"
 	);
-	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+	res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, GET");
+	res.setHeader("Access-Control-Allow-Credentials", "true");
 
 	if (req.method === "OPTIONS") {
 		return res.status(204).end();
@@ -46,12 +71,33 @@ export default async function handler(req, res) {
 
 	try {
 		const { email, fullName } = req.body || {};
+
+		// Debug logging
+		console.log("Request received:", {
+			email,
+			fullName,
+			origin: req.headers.origin,
+		});
+
 		if (!email)
 			return res
 				.status(400)
 				.json({ status: "error", message: "Email is required" });
 
 		const otp = generateOtp();
+
+		// Check SMTP configuration
+		if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+			console.error("SMTP configuration missing:", {
+				SMTP_USER: !!process.env.SMTP_USER,
+				SMTP_PASS: !!process.env.SMTP_PASS,
+			});
+			return res.status(500).json({
+				status: "error",
+				message: "Email service configuration error",
+			});
+		}
+
 		const transporter = createTransport();
 
 		const html = `
@@ -88,13 +134,21 @@ export default async function handler(req, res) {
 			html,
 		});
 
-		res
-			.status(200)
-			.json({ status: "success", message: "OTP sent successfully", otp });
+		console.log("Email sent successfully to:", email);
+
+		res.status(200).json({
+			status: "success",
+			message: "OTP sent successfully",
+			otp: otp,
+			email: email,
+			timestamp: Date.now(),
+		});
 	} catch (err) {
+		console.error("Error sending email:", err);
 		res.status(500).json({
 			status: "error",
 			message: err.message || "Failed to send OTP email",
+			error: process.env.NODE_ENV === "development" ? err.stack : undefined,
 		});
 	}
 }
