@@ -4,14 +4,7 @@ import axios from "axios";
 import { getDecryptedApiUrl } from "../../utils/apiConfig";
 import toast from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
-import {
-	X,
-	ChevronUp,
-	AlertTriangle,
-	Clock,
-	RefreshCw,
-	Calendar,
-} from "lucide-react";
+import { X, ChevronUp, AlertTriangle, RefreshCw } from "lucide-react";
 import {
 	getStudentsInTribe,
 	getAttendanceSessions,
@@ -41,6 +34,8 @@ const FacultyAttendanceModal = ({
 		const philippinesTime = new Date(now.getTime() + 8 * 60 * 60 * 1000); // Add 8 hours for UTC+8
 		return philippinesTime.toISOString().split("T")[0]; // Today's date in YYYY-MM-DD format
 	});
+	const [recentlyScanned, setRecentlyScanned] = useState(new Set());
+	const recentlyScannedRef = useRef(new Set());
 	const videoRef = useRef(null);
 	const codeReader = useRef(null);
 	const scrollContainerRef = useRef(null);
@@ -59,6 +54,8 @@ const FacultyAttendanceModal = ({
 			if (codeReader.current) {
 				codeReader.current.reset();
 			}
+			setRecentlyScanned(new Set()); // Clear recently scanned codes when component unmounts
+			recentlyScannedRef.current = new Set(); // Clear ref as well
 		};
 	}, []);
 
@@ -77,6 +74,11 @@ const FacultyAttendanceModal = ({
 			return () => scrollContainer.removeEventListener("scroll", handleScroll);
 		}
 	}, [isOpen]);
+
+	// Update refs whenever state changes to avoid closure issues
+	useEffect(() => {
+		recentlyScannedRef.current = recentlyScanned;
+	}, [recentlyScanned]);
 
 	// Function to scroll to top
 	const scrollToTop = () => {
@@ -357,12 +359,15 @@ const FacultyAttendanceModal = ({
 			videoRef.current.srcObject = null;
 		}
 		setShowScanner(false);
+		setRecentlyScanned(new Set()); // Clear recently scanned codes when stopping scanner
+		recentlyScannedRef.current = new Set(); // Clear ref as well
 		toast.success("Scanner stopped.", {
 			duration: 2000,
 		});
 	};
 
 	const handleQRScanResult = async (qrText) => {
+		// Prevent processing if already loading
 		if (loading) {
 			console.log("Already processing a scan, skipping...");
 			return;
@@ -372,6 +377,35 @@ const FacultyAttendanceModal = ({
 		if (qrText.includes("student_id:")) {
 			studentId = qrText.split("student_id:")[1].trim();
 		}
+
+		// Check if this specific QR code was recently scanned using ref for immediate check
+		if (recentlyScannedRef.current.has(studentId)) {
+			toast("QR code already processed recently", {
+				icon: "⚠️",
+				duration: 2000,
+			});
+			return;
+		}
+
+		// Immediately add to ref and state to prevent duplicate processing
+		recentlyScannedRef.current.add(studentId);
+		setRecentlyScanned((prev) => new Set(prev).add(studentId));
+
+		// Show immediate feedback that QR code was detected
+		toast(`QR Code detected: ${studentId}`, {
+			icon: "📱",
+			duration: 2000,
+		});
+
+		// Remove from recently scanned set after 5 seconds
+		setTimeout(() => {
+			setRecentlyScanned((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(studentId);
+				return newSet;
+			});
+			recentlyScannedRef.current.delete(studentId);
+		}, 5000);
 
 		const student = students.find((s) => s.user_id === studentId);
 		if (!student) {

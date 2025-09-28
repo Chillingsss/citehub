@@ -17,6 +17,7 @@ import { Label } from "@radix-ui/react-label";
 import {
 	verifyPasswordForgotOTP,
 	sendPasswordResetOtpMail,
+	checkEmail,
 } from "../utils/security";
 import toast from "react-hot-toast";
 
@@ -136,8 +137,29 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 		setError("");
 
 		try {
-			// Send OTP email using the new nodemailer function
-			const result = await sendPasswordResetOtpMail(email, "User");
+			// First check if email exists in the system
+			const emailCheckResult = await checkEmail(email);
+			const emailData =
+				typeof emailCheckResult === "string"
+					? JSON.parse(emailCheckResult)
+					: emailCheckResult;
+
+			if (!emailData.success) {
+				setError("Error checking email. Please try again.");
+				return;
+			}
+
+			if (!emailData.exists) {
+				setError("Email not found in the system.");
+				toast.error("Email not found in the system.");
+				return;
+			}
+
+			// If email exists, send OTP email using the new nodemailer function
+			const result = await sendPasswordResetOtpMail(
+				email,
+				emailData.user.user_name || "User"
+			);
 
 			if (result.status === "success") {
 				// Store the OTP and timestamp for verification
@@ -151,7 +173,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 			}
 		} catch (err) {
 			console.error("Email check error:", err);
-			setError("Failed to send OTP email. Please try again.");
+			setError("Failed to check email or send OTP. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -348,16 +370,21 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 								<Label className="text-sm font-semibold text-green-800 dark:text-green-300">
 									Verification Code
 								</Label>
-								<Input
-									type="text"
-									value={otp}
-									onChange={(e) =>
-										setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-									}
-									placeholder="Enter 6-digit code"
-									className="px-4 py-3 w-full text-center text-2xl font-mono tracking-widest text-green-900 rounded-2xl border-2 border-green-200 dark:text-green-100 dark:border-gray-600 bg-green-50/50 dark:bg-gray-700/50 focus:outline-none focus:ring-4 focus:ring-green-300/30 dark:focus:ring-green-500/30 focus:border-green-400 dark:focus:border-green-500"
-									maxLength={6}
-								/>
+								<div className="flex justify-center">
+									<Input
+										type="text"
+										value={otp}
+										onChange={(e) =>
+											setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+										}
+										placeholder="000000"
+										className="px-3 py-2 w-32 text-center text-xl font-mono tracking-[0.2em] text-green-900 rounded-xl border-2 border-green-200 dark:text-green-100 dark:border-gray-600 bg-green-50/50 dark:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-green-300/30 dark:focus:ring-green-500/30 focus:border-green-400 dark:focus:border-green-500"
+										maxLength={6}
+									/>
+								</div>
+								<p className="text-xs text-center text-gray-500 dark:text-gray-400">
+									Enter the 6-digit code sent to your email
+								</p>
 							</div>
 
 							<div className="text-center">

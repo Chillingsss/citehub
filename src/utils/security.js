@@ -112,7 +112,33 @@ export async function verifyPasswordResetOTP(username, otp, newPassword) {
 export async function verifyPasswordForgotOTP(email, newPassword) {
 	const formData = new FormData();
 	formData.append("operation", "verifyPasswordForgotOTP");
-	formData.append("json", JSON.stringify({ email, newPassword }));
+	formData.append(
+		"json",
+		JSON.stringify({ email: email, newPassword: newPassword })
+	);
+
+	const apiUrl = getDecryptedApiUrl();
+
+	console.log("email", email);
+	console.log("newPassword", newPassword);
+
+	try {
+		const response = await axios.post(`${apiUrl}/admin.php`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+
+		console.log("response", response.data);
+
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function checkEmail(email) {
+	const formData = new FormData();
+	formData.append("operation", "checkEmail");
+	formData.append("json", JSON.stringify({ email }));
 
 	const apiUrl = getDecryptedApiUrl();
 
