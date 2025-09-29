@@ -126,24 +126,12 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 
 	const fetchStudentsInTribe = async (tribeId) => {
 		try {
-			if (tribeId === "all") {
-				// Fetch students from all tribes
-				const allStudents = [];
-				for (const tribe of tribes) {
-					const result = await getStudentsInTribe(tribe.tribe_id);
-					if (result.success) {
-						allStudents.push(...result.students);
-					}
-				}
-				setStudents(allStudents);
+			const result = await getStudentsInTribe(tribeId);
+			if (result.success) {
+				setStudents(result.students);
 			} else {
-				const result = await getStudentsInTribe(tribeId);
-				if (result.success) {
-					setStudents(result.students);
-				} else {
-					console.warn("Failed to fetch students:", result);
-					setStudents([]);
-				}
+				console.warn("Failed to fetch students:", result);
+				setStudents([]);
 			}
 		} catch (error) {
 			console.error("Error fetching students:", error);
@@ -190,9 +178,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 				fetchAttendanceSessions(),
 				fetchTodayAttendance(),
 				selectedTribe
-					? selectedTribe.tribe_id === "all"
-						? fetchStudentsInTribe("all")
-						: fetchStudentsInTribe(selectedTribe.tribe_id)
+					? fetchStudentsInTribe(selectedTribe.tribe_id)
 					: Promise.resolve(),
 			]);
 
@@ -236,11 +222,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		setSelectedTribe(tribe);
 		setStudents([]);
 
-		if (tribe.tribe_id === "all") {
-			fetchStudentsInTribe("all");
-		} else {
-			fetchStudentsInTribe(tribe.tribe_id);
-		}
+		fetchStudentsInTribe(tribe.tribe_id);
 
 		// Automatically select the first active session
 		const activeSession = sessions.find(
@@ -365,10 +347,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 						}
 					}
 				);
-
-				toast.success("Camera started! Scan QR codes continuously.", {
-					duration: 3000,
-				});
 			}
 		} catch (error) {
 			console.error("Camera access error:", error);
@@ -459,17 +437,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		let currentStudents = [];
 		try {
 			const currentSelectedTribe = selectedTribeRef.current;
-			const currentTribes = tribesRef.current;
 
-			if (currentSelectedTribe?.tribe_id === "all") {
-				// Fetch students from all tribes
-				for (const tribe of currentTribes) {
-					const result = await getStudentsInTribe(tribe.tribe_id);
-					if (result.success) {
-						currentStudents.push(...result.students);
-					}
-				}
-			} else if (currentSelectedTribe?.tribe_id) {
+			if (currentSelectedTribe?.tribe_id) {
 				const result = await getStudentsInTribe(currentSelectedTribe.tribe_id);
 				if (result.success) {
 					currentStudents = result.students;
@@ -635,17 +604,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		let currentStudents = [];
 		try {
 			const currentSelectedTribe = selectedTribeRef.current;
-			const currentTribes = tribesRef.current;
 
-			if (currentSelectedTribe?.tribe_id === "all") {
-				// Fetch students from all tribes
-				for (const tribe of currentTribes) {
-					const result = await getStudentsInTribe(tribe.tribe_id);
-					if (result.success) {
-						currentStudents.push(...result.students);
-					}
-				}
-			} else if (currentSelectedTribe?.tribe_id) {
+			if (currentSelectedTribe?.tribe_id) {
 				const result = await getStudentsInTribe(currentSelectedTribe.tribe_id);
 				if (result.success) {
 					currentStudents = result.students;
@@ -875,12 +835,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 								<select
 									value={selectedTribe?.tribe_id || ""}
 									onChange={(e) => {
-										if (e.target.value === "all") {
-											handleTribeSelect({
-												tribe_id: "all",
-												tribe_name: "All Tribes",
-											});
-										} else if (e.target.value === "") {
+										if (e.target.value === "") {
 											// Handle "Choose a tribe..." option
 											setSelectedTribe(null);
 											setStudents([]);
@@ -902,9 +857,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 									className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
 								>
 									<option value="">Choose a tribe...</option>
-									<option value="all" className="font-medium">
-										🏆 All Tribes
-									</option>
 									{tribes.map((tribe) => (
 										<option key={tribe.tribe_id} value={tribe.tribe_id}>
 											{tribe.tribe_name}
@@ -1133,11 +1085,11 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 										<Users className="w-6 h-6 text-gray-400 sm:w-8 sm:h-8 dark:text-gray-500" />
 									</div>
 									<h3 className="mb-2 text-base font-medium text-gray-900 sm:text-lg dark:text-gray-100">
-										Select a Tribe or All Tribes
+										Select a Tribe
 									</h3>
 									<p className="px-4 text-sm text-gray-500 sm:text-base dark:text-gray-400">
-										Choose "All Tribes" to manage attendance for all students,
-										or select a specific tribe above.
+										Choose a specific tribe above to manage attendance for its
+										students.
 									</p>
 								</div>
 							</div>
