@@ -12,6 +12,8 @@ import {
 	Users,
 	QrCode,
 	RefreshCw,
+	Edit3,
+	Check,
 } from "lucide-react";
 import {
 	getAllTribes,
@@ -44,6 +46,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 	const [showQRCodeModal, setShowQRCodeModal] = useState(false);
 	const [recentlyScanned, setRecentlyScanned] = useState(new Set());
 	const recentlyScannedRef = useRef(new Set());
+	const [manualStudentId, setManualStudentId] = useState("");
+	const [showManualInput, setShowManualInput] = useState(false);
 	const videoRef = useRef(null);
 	const codeReader = useRef(null);
 	const scrollContainerRef = useRef(null);
@@ -584,6 +588,179 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		console.log("Continuing to scan for more QR codes...");
 	};
 
+	const handleManualAttendance = async () => {
+		if (!manualStudentId.trim()) {
+			toast.error("Please enter a student ID", { duration: 3000 });
+			return;
+		}
+
+		// Prevent processing if already loading
+		if (loading) {
+			console.log("Already processing attendance, please wait...");
+			return;
+		}
+
+		const studentId = manualStudentId.trim();
+
+		// Check if this specific student ID was recently processed
+		if (recentlyScannedRef.current.has(studentId)) {
+			toast("Student ID already processed recently", {
+				icon: "⚠️",
+				duration: 2000,
+			});
+			return;
+		}
+
+		// Immediately add to ref and state to prevent duplicate processing
+		recentlyScannedRef.current.add(studentId);
+		setRecentlyScanned((prev) => new Set(prev).add(studentId));
+
+		// Show immediate feedback that student ID was entered
+		toast(`Processing attendance for: ${studentId}`, {
+			icon: "📝",
+			duration: 2000,
+		});
+
+		// Remove from recently processed set after 5 seconds
+		setTimeout(() => {
+			setRecentlyScanned((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(studentId);
+				return newSet;
+			});
+			recentlyScannedRef.current.delete(studentId);
+		}, 5000);
+
+		// Get current students dynamically using refs to avoid closure issues
+		let currentStudents = [];
+		try {
+			const currentSelectedTribe = selectedTribeRef.current;
+			const currentTribes = tribesRef.current;
+
+			if (currentSelectedTribe?.tribe_id === "all") {
+				// Fetch students from all tribes
+				for (const tribe of currentTribes) {
+					const result = await getStudentsInTribe(tribe.tribe_id);
+					if (result.success) {
+						currentStudents.push(...result.students);
+					}
+				}
+			} else if (currentSelectedTribe?.tribe_id) {
+				const result = await getStudentsInTribe(currentSelectedTribe.tribe_id);
+				if (result.success) {
+					currentStudents = result.students;
+				}
+			}
+		} catch (error) {
+			console.error("Error fetching current students:", error);
+			// Fallback to the students state if fetch fails
+			currentStudents = students;
+		}
+
+		const student = currentStudents.find((s) => s.user_id === studentId);
+		if (!student) {
+			toast.error("Student not found in selected tribe!", {
+				duration: 3000,
+			});
+			return;
+		}
+
+		const studentName = `${student.user_name}`;
+		const checkingToast = toast.loading("Checking attendance status...");
+
+		try {
+			await fetchTodayAttendance();
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			const response = await axios.post(
+				`${getDecryptedApiUrl()}/sbo.php`,
+				(() => {
+					const formData = new FormData();
+					formData.append("operation", "getTodayAttendance");
+					formData.append("json", JSON.stringify({ sboId }));
+					return formData;
+				})()
+			);
+
+			const freshAttendanceRecords = Array.isArray(response.data)
+				? response.data
+				: [];
+
+			// Filter records to only today's date (Philippines timezone)
+			const today = new Date();
+			const philippinesToday = new Date(today.getTime() + 8 * 60 * 60 * 1000);
+			const todayDateString = philippinesToday.toISOString().split("T")[0];
+
+			const todaysRecords = freshAttendanceRecords.filter((record) => {
+				if (!record.attendance_timeIn) return false;
+				const recordDate = new Date(record.attendance_timeIn);
+				const philippinesDate = new Date(
+					recordDate.getTime() + 8 * 60 * 60 * 1000
+				);
+				const recordDateString = philippinesDate.toISOString().split("T")[0];
+				return recordDateString === todayDateString;
+			});
+
+			const currentRecord = todaysRecords.find(
+				(r) => r.attendance_studentId === studentId
+			);
+
+			toast.dismiss(checkingToast);
+
+			if (currentRecord && currentRecord.attendance_timeIn) {
+				// Check if student already has complete attendance for today
+				if (currentRecord.attendance_timeOut) {
+					const timeInFormatted = formatTime(currentRecord.attendance_timeIn);
+					const timeOutFormatted = formatTime(currentRecord.attendance_timeOut);
+					const dateFormatted = formatDate(currentRecord.attendance_timeIn);
+
+					toast.success(
+						`${studentName} already completed attendance!\n📅 ${dateFormatted}\n🕐 In: ${timeInFormatted} | Out: ${timeOutFormatted}`,
+						{
+							duration: 5000,
+							icon: "✅",
+						}
+					);
+					return;
+				}
+			}
+
+			const loadingToast = toast.loading("Processing attendance...");
+
+			try {
+				const result = await processAttendance(sboId, studentId);
+				toast.dismiss(loadingToast);
+
+				if (result.success) {
+					const actionText =
+						result.action === "time_in" ? "Time In" : "Time Out";
+					toast.success(`${actionText} recorded for ${studentName}`, {
+						duration: 3000,
+						icon: result.action === "time_in" ? "🕐" : "🔚",
+					});
+					await fetchTodayAttendance();
+					// Clear the input field after successful processing
+					setManualStudentId("");
+				} else {
+					toast.error(result.message || "Failed to process attendance", {
+						duration: 3000,
+					});
+				}
+			} catch (error) {
+				toast.dismiss(loadingToast);
+				console.error("Error processing attendance:", error);
+				toast.error("Failed to process attendance. Please try again.", {
+					duration: 3000,
+				});
+			}
+		} catch (error) {
+			toast.dismiss(checkingToast);
+			console.error("Error checking attendance status:", error);
+			toast.error("Error checking attendance status. Please try again.");
+			return;
+		}
+	};
+
 	// Removed duplicate processAttendance function since it's now handled in handleQRScanResult
 
 	// Function to filter attendance records by selected date
@@ -818,6 +995,94 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 												<div className="absolute right-2 bottom-2 w-4 h-4 border-r-2 border-b-2 border-green-500 sm:right-4 sm:bottom-4 sm:w-6 sm:h-6"></div>
 											</div>
 										</div>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Manual Attendance Input Section - Only show for active sessions */}
+						{selectedSession && selectedSession.attendanceS_status === 1 && (
+							<div className="p-4 border-b sm:p-6 dark:border-gray-700">
+								<div className="flex flex-col gap-3 mb-4 sm:flex-row sm:justify-between sm:items-center sm:gap-4">
+									<h3 className="text-base font-semibold text-gray-700 sm:text-lg dark:text-gray-300">
+										Manual Attendance
+									</h3>
+									<button
+										onClick={() => setShowManualInput(!showManualInput)}
+										className={`px-4 py-2.5 sm:py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base font-medium ${
+											showManualInput
+												? "bg-gray-600 text-white hover:bg-gray-700"
+												: "bg-blue-600 text-white hover:bg-blue-700"
+										}`}
+									>
+										{showManualInput
+											? "Hide Manual Input"
+											: "Show Manual Input"}
+									</button>
+								</div>
+
+								{showManualInput && (
+									<div className="space-y-4">
+										<div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+											<div className="flex items-center gap-2 mb-2">
+												<Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+												<span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+													Enter Student ID Manually
+												</span>
+											</div>
+											<p className="text-xs text-blue-700 dark:text-blue-300">
+												Type the student's school ID and click "Process
+												Attendance" to record their attendance.
+											</p>
+										</div>
+
+										<div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+											<div className="flex-1">
+												<label
+													htmlFor="manualStudentId"
+													className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+												>
+													Student ID
+												</label>
+												<input
+													id="manualStudentId"
+													type="text"
+													value={manualStudentId}
+													onChange={(e) => setManualStudentId(e.target.value)}
+													onKeyPress={(e) => {
+														if (e.key === "Enter") {
+															handleManualAttendance();
+														}
+													}}
+													placeholder="Enter student ID..."
+													className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+													disabled={loading}
+												/>
+											</div>
+											<div className="flex items-end">
+												<button
+													onClick={handleManualAttendance}
+													disabled={loading || !manualStudentId.trim()}
+													className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+												>
+													<Check className="w-4 h-4" />
+													{loading ? "Processing..." : "Process Attendance"}
+												</button>
+											</div>
+										</div>
+
+										{manualStudentId && (
+											<div className="p-3 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600">
+												<div className="flex items-center gap-2">
+													<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+														Ready to process:
+													</span>
+													<span className="px-2 py-1 text-xs font-mono bg-gray-200 text-gray-800 rounded dark:bg-gray-600 dark:text-gray-200">
+														{manualStudentId}
+													</span>
+												</div>
+											</div>
+										)}
 									</div>
 								)}
 							</div>
