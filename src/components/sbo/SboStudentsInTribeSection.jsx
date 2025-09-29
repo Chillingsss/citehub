@@ -17,7 +17,7 @@ import {
 	ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 
-const SboStudentsInTribeSection = ({
+const SboStudentsInTribeSectionComponent = ({
 	students,
 	selectedTribe,
 	selectedSession,
@@ -60,29 +60,29 @@ const SboStudentsInTribeSection = ({
 		});
 	};
 
-	const getFilteredAttendanceByDate = () => {
+	const filteredAttendanceByDate = React.useMemo(() => {
 		if (!Array.isArray(attendanceRecords)) return [];
-
 		return attendanceRecords.filter((record) => {
 			if (!record.attendance_timeIn) return false;
-
 			const recordDate = new Date(record.attendance_timeIn);
 			const philippinesDate = new Date(
 				recordDate.getTime() + 8 * 60 * 60 * 1000
 			);
 			const recordDateString = philippinesDate.toISOString().split("T")[0];
-
 			return recordDateString === selectedDate;
 		});
-	};
+	}, [attendanceRecords, selectedDate]);
+
+	const attendanceByStudentId = React.useMemo(() => {
+		const map = new Map();
+		filteredAttendanceByDate.forEach((r) => {
+			map.set(r.attendance_studentId, r);
+		});
+		return map;
+	}, [filteredAttendanceByDate]);
 
 	const getStudentAttendanceStatusForDate = (studentId) => {
-		const filteredRecords = getFilteredAttendanceByDate();
-
-		const record = filteredRecords.find(
-			(r) => r.attendance_studentId === studentId
-		);
-
+		const record = attendanceByStudentId.get(studentId);
 		if (!record) return "No record";
 		if (record.attendance_timeIn && !record.attendance_timeOut)
 			return "Time In";
@@ -92,14 +92,9 @@ const SboStudentsInTribeSection = ({
 	};
 
 	const sortStudentsByNewestAttendanceForDate = (studentsList) => {
-		const filteredRecords = getFilteredAttendanceByDate();
 		return [...studentsList].sort((a, b) => {
-			const recordA = filteredRecords.find(
-				(r) => r.attendance_studentId === a.user_id
-			);
-			const recordB = filteredRecords.find(
-				(r) => r.attendance_studentId === b.user_id
-			);
+			const recordA = attendanceByStudentId.get(a.user_id);
+			const recordB = attendanceByStudentId.get(b.user_id);
 			const statusA = getStudentAttendanceStatusForDate(a.user_id);
 			const statusB = getStudentAttendanceStatusForDate(b.user_id);
 			const priorityOrder = {
@@ -155,7 +150,7 @@ const SboStudentsInTribeSection = ({
 	// Sort students by attendance status and time for the selected date
 	const sortedStudents = React.useMemo(() => {
 		return sortStudentsByNewestAttendanceForDate(filteredStudents);
-	}, [filteredStudents, selectedDate, selectedSession, attendanceRecords]);
+	}, [filteredStudents, selectedDate, selectedSession, attendanceByStudentId]);
 
 	const getStudentsByYearLevel = () => {
 		const grouped = {};
@@ -447,9 +442,8 @@ const SboStudentsInTribeSection = ({
 													const status = getStudentAttendanceStatusForDate(
 														student.user_id
 													);
-													const filtered = getFilteredAttendanceByDate();
-													const record = filtered.find(
-														(r) => r.attendance_studentId === student.user_id
+													const record = attendanceByStudentId.get(
+														student.user_id
 													);
 
 													return (
@@ -636,5 +630,9 @@ const SboStudentsInTribeSection = ({
 		</div>
 	);
 };
+
+const SboStudentsInTribeSection = React.memo(
+	SboStudentsInTribeSectionComponent
+);
 
 export default SboStudentsInTribeSection;

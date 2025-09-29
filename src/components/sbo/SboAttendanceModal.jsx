@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import axios from "axios";
-import { getDecryptedApiUrl } from "../../utils/apiConfig";
 import toast from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
 import {
@@ -159,13 +157,16 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 			const result = await getTodayAttendance(sboId);
 			if (result.success) {
 				setAttendanceRecords(result.records);
+				return result.records || [];
 			} else {
 				console.warn("Failed to fetch today's attendance:", result);
 				setAttendanceRecords([]);
+				return [];
 			}
 		} catch (error) {
 			console.error("Error fetching today's attendance:", error);
 			setAttendanceRecords([]);
+			return [];
 		}
 	};
 
@@ -433,24 +434,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 			recentlyScannedRef.current.delete(studentId);
 		}, 5000);
 
-		// Get current students dynamically using refs to avoid closure issues
-		let currentStudents = [];
-		try {
-			const currentSelectedTribe = selectedTribeRef.current;
-
-			if (currentSelectedTribe?.tribe_id) {
-				const result = await getStudentsInTribe(currentSelectedTribe.tribe_id);
-				if (result.success) {
-					currentStudents = result.students;
-				}
-			}
-		} catch (error) {
-			console.error("Error fetching current students:", error);
-			// Fallback to the students state if fetch fails
-			currentStudents = students;
-		}
-
-		const student = currentStudents.find((s) => s.user_id === studentId);
+		const student = students.find((s) => s.user_id === studentId);
 		if (!student) {
 			toast.error("Student not found in selected tribe!", {
 				duration: 3000,
@@ -462,29 +446,11 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		const checkingToast = toast.loading("Checking attendance status...");
 
 		try {
-			await fetchTodayAttendance();
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			const response = await axios.post(
-				`${getDecryptedApiUrl()}/sbo.php`,
-				(() => {
-					const formData = new FormData();
-					formData.append("operation", "getTodayAttendance");
-					formData.append("json", JSON.stringify({ sboId }));
-					return formData;
-				})()
-			);
-
-			const freshAttendanceRecords = Array.isArray(response.data)
-				? response.data
-				: [];
-
-			// Filter records to only today's date (Philippines timezone)
+			const freshAttendanceRecords = await fetchTodayAttendance();
 			const today = new Date();
 			const philippinesToday = new Date(today.getTime() + 8 * 60 * 60 * 1000);
 			const todayDateString = philippinesToday.toISOString().split("T")[0];
-
-			const todaysRecords = freshAttendanceRecords.filter((record) => {
+			const todaysRecords = (freshAttendanceRecords || []).filter((record) => {
 				if (!record.attendance_timeIn) return false;
 				const recordDate = new Date(record.attendance_timeIn);
 				const philippinesDate = new Date(
@@ -493,7 +459,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 				const recordDateString = philippinesDate.toISOString().split("T")[0];
 				return recordDateString === todayDateString;
 			});
-
 			const currentRecord = todaysRecords.find(
 				(r) => r.attendance_studentId === studentId
 			);
@@ -600,24 +565,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 			recentlyScannedRef.current.delete(studentId);
 		}, 5000);
 
-		// Get current students dynamically using refs to avoid closure issues
-		let currentStudents = [];
-		try {
-			const currentSelectedTribe = selectedTribeRef.current;
-
-			if (currentSelectedTribe?.tribe_id) {
-				const result = await getStudentsInTribe(currentSelectedTribe.tribe_id);
-				if (result.success) {
-					currentStudents = result.students;
-				}
-			}
-		} catch (error) {
-			console.error("Error fetching current students:", error);
-			// Fallback to the students state if fetch fails
-			currentStudents = students;
-		}
-
-		const student = currentStudents.find((s) => s.user_id === studentId);
+		const student = students.find((s) => s.user_id === studentId);
 		if (!student) {
 			toast.error("Student not found in selected tribe!", {
 				duration: 3000,
@@ -629,29 +577,11 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 		const checkingToast = toast.loading("Checking attendance status...");
 
 		try {
-			await fetchTodayAttendance();
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			const response = await axios.post(
-				`${getDecryptedApiUrl()}/sbo.php`,
-				(() => {
-					const formData = new FormData();
-					formData.append("operation", "getTodayAttendance");
-					formData.append("json", JSON.stringify({ sboId }));
-					return formData;
-				})()
-			);
-
-			const freshAttendanceRecords = Array.isArray(response.data)
-				? response.data
-				: [];
-
-			// Filter records to only today's date (Philippines timezone)
+			const freshAttendanceRecords = await fetchTodayAttendance();
 			const today = new Date();
 			const philippinesToday = new Date(today.getTime() + 8 * 60 * 60 * 1000);
 			const todayDateString = philippinesToday.toISOString().split("T")[0];
-
-			const todaysRecords = freshAttendanceRecords.filter((record) => {
+			const todaysRecords = (freshAttendanceRecords || []).filter((record) => {
 				if (!record.attendance_timeIn) return false;
 				const recordDate = new Date(record.attendance_timeIn);
 				const philippinesDate = new Date(
@@ -660,7 +590,6 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 				const recordDateString = philippinesDate.toISOString().split("T")[0];
 				return recordDateString === todayDateString;
 			});
-
 			const currentRecord = todaysRecords.find(
 				(r) => r.attendance_studentId === studentId
 			);
