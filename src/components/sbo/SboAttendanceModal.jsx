@@ -783,7 +783,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 											}
 										}
 									}}
-									className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+									className="px-4 py-3 w-full text-sm font-medium text-gray-700 bg-white rounded-lg border border-gray-300 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
 								>
 									<option value="">Choose a tribe...</option>
 									{tribes.map((tribe) => (
@@ -792,13 +792,13 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 										</option>
 									))}
 								</select>
-								<div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+								<div className="flex absolute inset-y-0 right-0 items-center pr-3 pointer-events-none">
 									<ChevronDown className="w-5 h-5 text-gray-400" />
 								</div>
 							</div>
 							{selectedTribe && (
-								<div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
-									<div className="flex items-center gap-2">
+								<div className="p-3 mt-3 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+									<div className="flex gap-2 items-center">
 										<Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
 										<span className="text-sm font-medium text-blue-800 dark:text-blue-200">
 											Selected: {selectedTribe.tribe_name}
@@ -904,8 +904,8 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 
 								{showManualInput && (
 									<div className="space-y-4">
-										<div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
-											<div className="flex items-center gap-2 mb-2">
+										<div className="p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+											<div className="flex gap-2 items-center mb-2">
 												<Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
 												<span className="text-sm font-medium text-blue-800 dark:text-blue-200">
 													Enter Student ID Manually
@@ -936,7 +936,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 														}
 													}}
 													placeholder="Enter student ID..."
-													className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+													className="px-3 py-2 w-full text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
 													disabled={loading}
 												/>
 											</div>
@@ -944,7 +944,7 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 												<button
 													onClick={handleManualAttendance}
 													disabled={loading || !manualStudentId.trim()}
-													className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+													className="flex gap-2 items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
 												>
 													<Check className="w-4 h-4" />
 													{loading ? "Processing..." : "Process Attendance"}
@@ -953,12 +953,12 @@ const SboAttendanceModal = ({ isOpen, onClose, sboId, sboProfile }) => {
 										</div>
 
 										{manualStudentId && (
-											<div className="p-3 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600">
-												<div className="flex items-center gap-2">
+											<div className="p-3 bg-gray-50 rounded-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+												<div className="flex gap-2 items-center">
 													<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
 														Ready to process:
 													</span>
-													<span className="px-2 py-1 text-xs font-mono bg-gray-200 text-gray-800 rounded dark:bg-gray-600 dark:text-gray-200">
+													<span className="px-2 py-1 font-mono text-xs text-gray-800 bg-gray-200 rounded dark:bg-gray-600 dark:text-gray-200">
 														{manualStudentId}
 													</span>
 												</div>

@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import axios from "axios";
-import { getDecryptedApiUrl } from "../../utils/apiConfig";
 import toast from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
-import { X, ChevronUp, AlertTriangle, RefreshCw } from "lucide-react";
+import {
+	X,
+	ChevronUp,
+	AlertTriangle,
+	RefreshCw,
+	Edit3,
+	Check,
+} from "lucide-react";
 import {
 	getStudentsInTribe,
 	getAttendanceSessions,
@@ -13,12 +18,7 @@ import {
 } from "../../utils/faculty";
 import StudentsInTribeSection from "./StudentsInTribeSection";
 
-const FacultyAttendanceModal = ({
-	isOpen,
-	onClose,
-	facultyId,
-	facultyProfile,
-}) => {
+const FacultyAttendanceModal = ({ isOpen, onClose, facultyId }) => {
 	const [students, setStudents] = useState([]);
 	const [sessions, setSessions] = useState([]);
 	const [selectedSession, setSelectedSession] = useState(null);
@@ -36,49 +36,11 @@ const FacultyAttendanceModal = ({
 	});
 	const [recentlyScanned, setRecentlyScanned] = useState(new Set());
 	const recentlyScannedRef = useRef(new Set());
+	const [manualStudentId, setManualStudentId] = useState("");
+	const [showManualInput, setShowManualInput] = useState(false);
 	const videoRef = useRef(null);
 	const codeReader = useRef(null);
 	const scrollContainerRef = useRef(null);
-
-	useEffect(() => {
-		if (isOpen && facultyId) {
-			fetchStudentsInTribe();
-			fetchAttendanceSessions();
-			fetchTodayAttendance();
-		}
-	}, [isOpen, facultyId]);
-
-	useEffect(() => {
-		return () => {
-			// Cleanup camera when component unmounts
-			if (codeReader.current) {
-				codeReader.current.reset();
-			}
-			setRecentlyScanned(new Set()); // Clear recently scanned codes when component unmounts
-			recentlyScannedRef.current = new Set(); // Clear ref as well
-		};
-	}, []);
-
-	// Handle scroll events to show/hide scroll-to-top button
-	useEffect(() => {
-		const handleScroll = () => {
-			if (scrollContainerRef.current) {
-				const scrollTop = scrollContainerRef.current.scrollTop;
-				setShowScrollTop(scrollTop > 200); // Show button after scrolling 200px
-			}
-		};
-
-		const scrollContainer = scrollContainerRef.current;
-		if (scrollContainer) {
-			scrollContainer.addEventListener("scroll", handleScroll);
-			return () => scrollContainer.removeEventListener("scroll", handleScroll);
-		}
-	}, [isOpen]);
-
-	// Update refs whenever state changes to avoid closure issues
-	useEffect(() => {
-		recentlyScannedRef.current = recentlyScanned;
-	}, [recentlyScanned]);
 
 	// Function to scroll to top
 	const scrollToTop = () => {
@@ -134,32 +96,78 @@ const FacultyAttendanceModal = ({
 		}
 	};
 
-	// Stop scanner if session switches to inactive
-	useEffect(() => {
-		if (
-			selectedSession &&
-			selectedSession.attendanceS_status === 0 &&
-			showScanner
-		) {
-			stopScanner();
-		}
-	}, [selectedSession]);
-
 	const fetchTodayAttendance = async () => {
 		try {
 			const result = await getTodayAttendance(facultyId);
 			if (result.success) {
-				console.log("Fetched attendance records:", result.records);
 				setAttendanceRecords(result.records);
+				return result.records || [];
 			} else {
 				console.warn("Failed to fetch today's attendance:", result);
 				setAttendanceRecords([]);
+				return [];
 			}
 		} catch (error) {
 			console.error("Error fetching today's attendance:", error);
 			setAttendanceRecords([]);
+			return [];
 		}
 	};
+
+	const stopScanner = () => {
+		if (codeReader.current) {
+			codeReader.current.reset();
+		}
+		if (videoRef.current && videoRef.current.srcObject) {
+			const tracks = videoRef.current.srcObject.getTracks();
+			tracks.forEach((track) => track.stop());
+			videoRef.current.srcObject = null;
+		}
+		setShowScanner(false);
+		setRecentlyScanned(new Set()); // Clear recently scanned codes when stopping scanner
+		recentlyScannedRef.current = new Set(); // Clear ref as well
+		toast.success("Scanner stopped.", {
+			duration: 2000,
+		});
+	};
+
+	useEffect(() => {
+		if (isOpen && facultyId) {
+			fetchStudentsInTribe();
+			fetchAttendanceSessions();
+			fetchTodayAttendance();
+		}
+	}, [isOpen, facultyId]);
+
+	useEffect(() => {
+		return () => {
+			if (codeReader.current) {
+				codeReader.current.reset();
+			}
+			setRecentlyScanned(new Set()); // Clear recently scanned codes when component unmounts
+			recentlyScannedRef.current = new Set(); // Clear ref as well
+		};
+	}, []);
+
+	useEffect(() => {
+		const handleScroll = () => {
+			if (scrollContainerRef.current) {
+				const scrollTop = scrollContainerRef.current.scrollTop;
+				setShowScrollTop(scrollTop > 200);
+			}
+		};
+
+		const scrollContainer = scrollContainerRef.current;
+		if (scrollContainer) {
+			scrollContainer.addEventListener("scroll", handleScroll);
+			return () => scrollContainer.removeEventListener("scroll", handleScroll);
+		}
+	}, [isOpen]);
+
+	// Update refs whenever state changes to avoid closure issues
+	useEffect(() => {
+		recentlyScannedRef.current = recentlyScanned;
+	}, [recentlyScanned]);
 
 	const startScanner = async () => {
 		const sessions = await getAttendanceSessions();
@@ -175,33 +183,13 @@ const FacultyAttendanceModal = ({
 		setShowScanner(true);
 
 		try {
-			// Check if getUserMedia is supported
 			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 				throw new Error("Camera access is not supported in this browser");
 			}
 
-			// First, check camera permissions
-			try {
-				const permissionStatus = await navigator.permissions.query({
-					name: "camera",
-				});
-				console.log("Camera permission status:", permissionStatus.state);
-
-				if (permissionStatus.state === "denied") {
-					throw new Error(
-						"Camera permission is denied. Please enable camera access in your browser settings."
-					);
-				}
-			} catch (permError) {
-				console.warn("Permission API not supported:", permError);
-				// Continue anyway, as some browsers don't support permissions API
-			}
-
 			codeReader.current = new BrowserMultiFormatReader();
 
-			// Try different camera constraints in order of preference
 			const constraintOptions = [
-				// First try: Back camera with ideal resolution
 				{
 					video: {
 						facingMode: { exact: "environment" },
@@ -209,7 +197,6 @@ const FacultyAttendanceModal = ({
 						height: { ideal: 480 },
 					},
 				},
-				// Second try: Any back camera
 				{
 					video: {
 						facingMode: "environment",
@@ -217,7 +204,6 @@ const FacultyAttendanceModal = ({
 						height: { ideal: 480 },
 					},
 				},
-				// Third try: Front camera
 				{
 					video: {
 						facingMode: "user",
@@ -225,14 +211,12 @@ const FacultyAttendanceModal = ({
 						height: { ideal: 480 },
 					},
 				},
-				// Fourth try: Any camera with basic constraints
 				{
 					video: {
 						width: { ideal: 640 },
 						height: { ideal: 480 },
 					},
 				},
-				// Last try: Just video
 				{
 					video: true,
 				},
@@ -241,39 +225,23 @@ const FacultyAttendanceModal = ({
 			let stream = null;
 			let lastError = null;
 
-			// Try each constraint option until one works
 			for (const constraints of constraintOptions) {
 				try {
-					console.log("Trying camera constraints:", constraints);
 					stream = await navigator.mediaDevices.getUserMedia(constraints);
-					console.log(
-						"Camera access successful with constraints:",
-						constraints
-					);
 					break;
 				} catch (error) {
-					console.warn(
-						"Failed with constraints:",
-						constraints,
-						"Error:",
-						error.message
-					);
 					lastError = error;
 					continue;
 				}
 			}
 
 			if (!stream) {
-				throw (
-					lastError ||
-					new Error("Unable to access camera with any configuration")
-				);
+				throw lastError || new Error("Unable to access camera");
 			}
 
 			if (videoRef.current) {
 				videoRef.current.srcObject = stream;
 
-				// Wait for video to be ready
 				await new Promise((resolve, reject) => {
 					const video = videoRef.current;
 					if (!video) {
@@ -299,7 +267,6 @@ const FacultyAttendanceModal = ({
 					video.play().catch(reject);
 				});
 
-				// Start QR code detection
 				codeReader.current.decodeFromVideoDevice(
 					null,
 					videoRef.current,
@@ -308,24 +275,17 @@ const FacultyAttendanceModal = ({
 							console.log("QR Code detected:", result.getText());
 							setScanResult(result.getText());
 							handleQRScanResult(result.getText());
-							// Don't stop scanner here - let it continue scanning
 						}
 						if (error && error.name !== "NotFoundException") {
 							console.warn("QR Scanner error:", error);
 						}
 					}
 				);
-
-				// Show success toast when camera starts
-				toast.success("Camera started! Scan QR codes continuously.", {
-					duration: 3000,
-				});
 			}
 		} catch (error) {
 			console.error("Camera access error:", error);
 			setShowScanner(false);
 
-			// Provide specific error messages with toast
 			if (error.name === "NotAllowedError") {
 				toast.error(
 					"Camera permission denied. Please allow camera access and try again.",
@@ -349,29 +309,14 @@ const FacultyAttendanceModal = ({
 		}
 	};
 
-	const stopScanner = () => {
-		if (codeReader.current) {
-			codeReader.current.reset();
-		}
-		if (videoRef.current && videoRef.current.srcObject) {
-			const tracks = videoRef.current.srcObject.getTracks();
-			tracks.forEach((track) => track.stop());
-			videoRef.current.srcObject = null;
-		}
-		setShowScanner(false);
-		setRecentlyScanned(new Set()); // Clear recently scanned codes when stopping scanner
-		recentlyScannedRef.current = new Set(); // Clear ref as well
-		toast.success("Scanner stopped.", {
-			duration: 2000,
-		});
-	};
-
 	const handleQRScanResult = async (qrText) => {
 		// Prevent processing if already loading
 		if (loading) {
 			console.log("Already processing a scan, skipping...");
 			return;
 		}
+
+		setLoading(true);
 
 		let studentId = qrText;
 		if (qrText.includes("student_id:")) {
@@ -419,29 +364,11 @@ const FacultyAttendanceModal = ({
 		const checkingToast = toast.loading("Checking attendance status...");
 
 		try {
-			await fetchTodayAttendance();
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			const response = await axios.post(
-				`${getDecryptedApiUrl()}/faculty.php`,
-				(() => {
-					const formData = new FormData();
-					formData.append("operation", "getTodayAttendance");
-					formData.append("json", JSON.stringify({ facultyId }));
-					return formData;
-				})()
-			);
-
-			const freshAttendanceRecords = Array.isArray(response.data)
-				? response.data
-				: [];
-
-			// Filter records to only today's date (Philippines timezone)
+			const freshAttendanceRecords = await fetchTodayAttendance();
 			const today = new Date();
 			const philippinesToday = new Date(today.getTime() + 8 * 60 * 60 * 1000);
 			const todayDateString = philippinesToday.toISOString().split("T")[0];
-
-			const todaysRecords = freshAttendanceRecords.filter((record) => {
+			const todaysRecords = (freshAttendanceRecords || []).filter((record) => {
 				if (!record.attendance_timeIn) return false;
 				const recordDate = new Date(record.attendance_timeIn);
 				const philippinesDate = new Date(
@@ -450,7 +377,6 @@ const FacultyAttendanceModal = ({
 				const recordDateString = philippinesDate.toISOString().split("T")[0];
 				return recordDateString === todayDateString;
 			});
-
 			const currentRecord = todaysRecords.find(
 				(r) => r.attendance_studentId === studentId
 			);
@@ -507,25 +433,146 @@ const FacultyAttendanceModal = ({
 			toast.dismiss(checkingToast);
 			console.error("Error checking attendance status:", error);
 			toast.error("Error checking attendance status. Please try again.");
+			setLoading(false);
 			return;
+		} finally {
+			setLoading(false);
 		}
 
 		console.log("Continuing to scan for more QR codes...");
 	};
 
-	// Function to filter students by search query (name or ID)
-	const filterStudents = (students) => {
-		if (!searchQuery.trim()) {
-			return students;
+	const handleManualAttendance = async () => {
+		if (!manualStudentId.trim()) {
+			toast.error("Please enter a student ID", { duration: 3000 });
+			return;
 		}
 
-		const query = searchQuery.toLowerCase().trim();
-		return students.filter((student) => {
-			const fullName = `${student.user_name}`.toLowerCase();
-			const studentId = student.user_id.toLowerCase();
+		// Prevent processing if already loading
+		if (loading) {
+			console.log("Already processing attendance, please wait...");
+			return;
+		}
 
-			return fullName.includes(query) || studentId.includes(query);
+		setLoading(true);
+
+		const studentId = manualStudentId.trim();
+
+		// Check if this specific student ID was recently processed
+		if (recentlyScannedRef.current.has(studentId)) {
+			toast("Student ID already processed recently", {
+				icon: "⚠️",
+				duration: 2000,
+			});
+			return;
+		}
+
+		// Immediately add to ref and state to prevent duplicate processing
+		recentlyScannedRef.current.add(studentId);
+		setRecentlyScanned((prev) => new Set(prev).add(studentId));
+
+		// Show immediate feedback that student ID was entered
+		toast(`Processing attendance for: ${studentId}`, {
+			icon: "📝",
+			duration: 2000,
 		});
+
+		// Remove from recently processed set after 5 seconds
+		setTimeout(() => {
+			setRecentlyScanned((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(studentId);
+				return newSet;
+			});
+			recentlyScannedRef.current.delete(studentId);
+		}, 5000);
+
+		const student = students.find((s) => s.user_id === studentId);
+		if (!student) {
+			toast.error("Student not found in your tribe!", {
+				duration: 3000,
+			});
+			return;
+		}
+
+		const studentName = `${student.user_name}`;
+		const checkingToast = toast.loading("Checking attendance status...");
+
+		try {
+			const freshAttendanceRecords = await fetchTodayAttendance();
+			const today = new Date();
+			const philippinesToday = new Date(today.getTime() + 8 * 60 * 60 * 1000);
+			const todayDateString = philippinesToday.toISOString().split("T")[0];
+			const todaysRecords = (freshAttendanceRecords || []).filter((record) => {
+				if (!record.attendance_timeIn) return false;
+				const recordDate = new Date(record.attendance_timeIn);
+				const philippinesDate = new Date(
+					recordDate.getTime() + 8 * 60 * 60 * 1000
+				);
+				const recordDateString = philippinesDate.toISOString().split("T")[0];
+				return recordDateString === todayDateString;
+			});
+			const currentRecord = todaysRecords.find(
+				(r) => r.attendance_studentId === studentId
+			);
+
+			toast.dismiss(checkingToast);
+
+			if (currentRecord && currentRecord.attendance_timeIn) {
+				// Check if student already has complete attendance for today
+				if (currentRecord.attendance_timeOut) {
+					const timeInFormatted = formatTime(currentRecord.attendance_timeIn);
+					const timeOutFormatted = formatTime(currentRecord.attendance_timeOut);
+					const dateFormatted = formatDate(currentRecord.attendance_timeIn);
+
+					toast.success(
+						`${studentName} already completed attendance!\n📅 ${dateFormatted}\n🕐 In: ${timeInFormatted} | Out: ${timeOutFormatted}`,
+						{
+							duration: 5000,
+							icon: "✅",
+						}
+					);
+					return;
+				}
+			}
+
+			const loadingToast = toast.loading("Processing attendance...");
+
+			try {
+				const result = await processAttendance(facultyId, studentId, 1);
+				toast.dismiss(loadingToast);
+
+				if (result.success) {
+					const actionText =
+						result.action === "time_in" ? "Time In" : "Time Out";
+					toast.success(`${actionText} recorded for ${studentName}`, {
+						duration: 3000,
+						icon: result.action === "time_in" ? "🕐" : "🔚",
+					});
+					await fetchTodayAttendance();
+					// Clear the input field after successful processing
+					setManualStudentId("");
+				} else {
+					toast.error(result.message || "Failed to process attendance", {
+						duration: 3000,
+					});
+				}
+			} catch (error) {
+				toast.dismiss(loadingToast);
+				console.error("Error processing attendance:", error);
+				toast.error("Failed to process attendance. Please try again.", {
+					duration: 3000,
+				});
+			}
+		} catch (error) {
+			toast.dismiss(checkingToast);
+			console.error("Error checking attendance status:", error);
+			toast.error("Error checking attendance status. Please try again.");
+			setLoading(false);
+			return;
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	const formatTime = (datetime) => {
@@ -548,17 +595,14 @@ const FacultyAttendanceModal = ({
 
 	const handleRefresh = async () => {
 		try {
-			// Show loading toast
 			const loadingToast = toast.loading("Refreshing attendance data...");
 
-			// Refresh all data
 			await Promise.all([
 				fetchStudentsInTribe(),
 				fetchAttendanceSessions(),
 				fetchTodayAttendance(),
 			]);
 
-			// Dismiss loading toast and show success
 			toast.dismiss(loadingToast);
 			toast.success("Attendance data refreshed successfully!", {
 				duration: 2000,
@@ -668,6 +712,94 @@ const FacultyAttendanceModal = ({
 												<div className="absolute right-2 bottom-2 w-4 h-4 border-r-2 border-b-2 border-green-500 sm:right-4 sm:bottom-4 sm:w-6 sm:h-6"></div>
 											</div>
 										</div>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Manual Attendance Input Section - Only show for active sessions */}
+						{selectedSession && selectedSession.attendanceS_status === 1 && (
+							<div className="p-4 border-b sm:p-6 dark:border-gray-700">
+								<div className="flex flex-col gap-3 mb-4 sm:flex-row sm:justify-between sm:items-center sm:gap-4">
+									<h3 className="text-base font-semibold text-gray-700 sm:text-lg dark:text-gray-300">
+										Manual Attendance
+									</h3>
+									<button
+										onClick={() => setShowManualInput(!showManualInput)}
+										className={`px-4 py-2.5 sm:py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base font-medium ${
+											showManualInput
+												? "bg-gray-600 text-white hover:bg-gray-700"
+												: "bg-blue-600 text-white hover:bg-blue-700"
+										}`}
+									>
+										{showManualInput
+											? "Hide Manual Input"
+											: "Show Manual Input"}
+									</button>
+								</div>
+
+								{showManualInput && (
+									<div className="space-y-4">
+										<div className="p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+											<div className="flex gap-2 items-center mb-2">
+												<Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+												<span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+													Enter Student ID Manually
+												</span>
+											</div>
+											<p className="text-xs text-blue-700 dark:text-blue-300">
+												Type the student's school ID and click "Process
+												Attendance" to record their attendance.
+											</p>
+										</div>
+
+										<div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+											<div className="flex-1">
+												<label
+													htmlFor="manualStudentId"
+													className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+												>
+													Student ID
+												</label>
+												<input
+													id="manualStudentId"
+													type="text"
+													value={manualStudentId}
+													onChange={(e) => setManualStudentId(e.target.value)}
+													onKeyPress={(e) => {
+														if (e.key === "Enter") {
+															handleManualAttendance();
+														}
+													}}
+													placeholder="Enter student ID..."
+													className="px-3 py-2 w-full text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
+													disabled={loading}
+												/>
+											</div>
+											<div className="flex items-end">
+												<button
+													onClick={handleManualAttendance}
+													disabled={loading || !manualStudentId.trim()}
+													className="flex gap-2 items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+												>
+													<Check className="w-4 h-4" />
+													{loading ? "Processing..." : "Process Attendance"}
+												</button>
+											</div>
+										</div>
+
+										{manualStudentId && (
+											<div className="p-3 bg-gray-50 rounded-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+												<div className="flex gap-2 items-center">
+													<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+														Ready to process:
+													</span>
+													<span className="px-2 py-1 font-mono text-xs text-gray-800 bg-gray-200 rounded dark:bg-gray-600 dark:text-gray-200">
+														{manualStudentId}
+													</span>
+												</div>
+											</div>
+										)}
 									</div>
 								)}
 							</div>
