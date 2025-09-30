@@ -14,8 +14,10 @@ import {
 	Clock,
 	ChevronLeft,
 	ChevronRight,
+	FileSpreadsheet,
 } from "lucide-react";
 import { getAttendanceReports, getYearLevels } from "../../utils/admin";
+import * as XLSX from "xlsx";
 
 const ReportsModal = ({ isOpen, onClose }) => {
 	const [activeTab, setActiveTab] = useState("attendance");
@@ -86,9 +88,78 @@ const ReportsModal = ({ isOpen, onClose }) => {
 		toast.success("Reports refreshed successfully!");
 	};
 
+	const handleExportExcel = () => {
+		try {
+			// Prepare data for Excel export
+			const excelData = filteredAttendanceData.map((record, index) => ({
+				"No.": index + 1,
+				"Student Name": record.student_name || "N/A",
+				"Student ID": record.student_id || "N/A",
+				"Year Level": record.year_level || "N/A",
+				Tribe: record.tribe_name || "No Tribe",
+				Status: record.status === "present" ? "Present" : "Absent",
+				"Time In": record.time_in
+					? formatPhilippineTime(record.time_in)
+					: "N/A",
+				"Time Out": record.time_out
+					? formatPhilippineTime(record.time_out)
+					: "N/A",
+			}));
+
+			// Create workbook and worksheet
+			const wb = XLSX.utils.book_new();
+			const ws = XLSX.utils.json_to_sheet(excelData);
+
+			// Set column widths
+			const colWidths = [
+				{ wch: 5 }, // No.
+				{ wch: 30 }, // Student Name
+				{ wch: 15 }, // Student ID
+				{ wch: 12 }, // Year Level
+				{ wch: 20 }, // Tribe
+				{ wch: 10 }, // Status
+				{ wch: 15 }, // Time In
+				{ wch: 15 }, // Time Out
+			];
+			ws["!cols"] = colWidths;
+
+			// Add the worksheet to workbook
+			XLSX.utils.book_append_sheet(wb, ws, "Attendance Report");
+
+			// Generate filename with date and filters
+			const dateStr = formatPhilippineDate(selectedDate).replace(
+				/[^a-zA-Z0-9]/g,
+				"_"
+			);
+			const yearLevelStr =
+				selectedYearLevel === "all"
+					? "All_Levels"
+					: yearLevels
+							.find((l) => l.yearL_id == selectedYearLevel)
+							?.yearL_name?.replace(/[^a-zA-Z0-9]/g, "_") || "All";
+			const statusStr =
+				selectedStatus === "all"
+					? "All_Status"
+					: selectedStatus === "present"
+					? "Present_Only"
+					: "Absent_Only";
+
+			const filename = `Attendance_Report_${dateStr}_${yearLevelStr}_${statusStr}.xlsx`;
+
+			// Export the file
+			XLSX.writeFile(wb, filename);
+
+			toast.success(
+				`Excel file "${filename}" has been downloaded successfully!`
+			);
+		} catch (error) {
+			console.error("Error exporting to Excel:", error);
+			toast.error("Failed to export Excel file. Please try again.");
+		}
+	};
+
 	const handleExport = () => {
-		// TODO: Implement CSV/Excel export functionality
-		toast.success("Export functionality coming soon!");
+		handleExportExcel();
 	};
 
 	// Format date to Philippine format
@@ -170,7 +241,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 			filteredAttendanceData.forEach((record, index) => {
 				const row = document.createElement("tr");
 				row.className =
-					"hover:bg-gray-50 dark:hover:bg-gray-600/50 transition-colors";
+					"transition-colors hover:bg-gray-50 dark:hover:bg-gray-600/50";
 
 				// Student column
 				const studentCell = document.createElement("td");
@@ -189,21 +260,21 @@ const ReportsModal = ({ isOpen, onClose }) => {
 				// ID column
 				const idCell = document.createElement("td");
 				idCell.className =
-					"px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white";
+					"px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white";
 				idCell.textContent = record.student_id;
 				row.appendChild(idCell);
 
 				// Year Level column
 				const yearLevelCell = document.createElement("td");
 				yearLevelCell.className =
-					"px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white";
+					"px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white";
 				yearLevelCell.textContent = record.year_level;
 				row.appendChild(yearLevelCell);
 
 				// Tribe column
 				const tribeCell = document.createElement("td");
 				tribeCell.className =
-					"px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white";
+					"px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white";
 				tribeCell.textContent = record.tribe_name || "No Tribe";
 				row.appendChild(tribeCell);
 
@@ -211,7 +282,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 				const statusCell = document.createElement("td");
 				statusCell.className = "px-4 py-4 whitespace-nowrap";
 				statusCell.innerHTML = `
-					<div class="flex items-center justify-center">
+					<div class="flex justify-center items-center">
 						<span class="status-badge inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
 							record.status
 						)}">
@@ -486,7 +557,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 	return (
 		<>
 			<Toaster position="top-right" />
-			<div className="flex fixed inset-0 z-50 justify-center items-center bg-black/50 backdrop-blur-sm bg-opacity-50">
+			<div className="flex fixed inset-0 z-50 justify-center items-center bg-opacity-50 backdrop-blur-sm bg-black/50">
 				<div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg w-full max-w-7xl h-full sm:h-[calc(105vh-2rem)] flex flex-col overflow-hidden">
 					{/* Header */}
 					<div className="flex flex-col flex-shrink-0 gap-3 p-4 border-b sm:flex-row sm:justify-between sm:items-center sm:gap-0 sm:p-6 dark:border-gray-700">
@@ -502,6 +573,13 @@ const ReportsModal = ({ isOpen, onClose }) => {
 										title="Refresh data"
 									>
 										<RefreshCw className="w-4 h-4" />
+									</button>
+									<button
+										onClick={handleExport}
+										className="flex gap-2 items-center p-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+										title="Export to Excel"
+									>
+										<FileSpreadsheet className="w-4 h-4" />
 									</button>
 									<button
 										onClick={handlePrint}
@@ -546,7 +624,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 								)}
 							</div>
 						</div>
-						<div className="hidden sm:flex gap-2 items-center">
+						<div className="hidden gap-2 items-center sm:flex">
 							<button
 								onClick={handleRefresh}
 								className="flex gap-2 items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
@@ -554,6 +632,14 @@ const ReportsModal = ({ isOpen, onClose }) => {
 							>
 								<RefreshCw className="w-4 h-4" />
 								<span>Refresh</span>
+							</button>
+							<button
+								onClick={handleExport}
+								className="flex gap-2 items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+								title="Export to Excel"
+							>
+								<FileSpreadsheet className="w-4 h-4" />
+								<span>Export Excel</span>
 							</button>
 							<button
 								onClick={handlePrint}
@@ -622,7 +708,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 															setSelectedDate(selectedDate);
 														}
 													}}
-													className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+													className="px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
 												/>
 											</div>
 											<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -636,7 +722,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 														onChange={(e) =>
 															setSelectedYearLevel(e.target.value)
 														}
-														className="appearance-none w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-600 border-2 border-gray-200 dark:border-gray-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-400 cursor-pointer pr-10 shadow-sm"
+														className="px-4 py-2.5 pr-10 w-full text-sm bg-white rounded-xl border-2 border-gray-200 shadow-sm transition-all duration-200 appearance-none cursor-pointer dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 hover:border-gray-300 dark:hover:border-gray-400"
 													>
 														<option value="all" className="py-2">
 															All Year Levels
@@ -651,9 +737,9 @@ const ReportsModal = ({ isOpen, onClose }) => {
 															</option>
 														))}
 													</select>
-													<div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+													<div className="flex absolute inset-y-0 right-0 items-center pr-3 pointer-events-none">
 														<svg
-															className="w-5 h-5 text-gray-400 dark:text-gray-300 transition-transform duration-200"
+															className="w-5 h-5 text-gray-400 transition-transform duration-200 dark:text-gray-300"
 															fill="none"
 															stroke="currentColor"
 															viewBox="0 0 24 24"
@@ -681,7 +767,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 													<select
 														value={selectedStatus}
 														onChange={(e) => setSelectedStatus(e.target.value)}
-														className="appearance-none w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-600 border-2 border-gray-200 dark:border-gray-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-400 cursor-pointer pr-10 shadow-sm"
+														className="px-4 py-2.5 pr-10 w-full text-sm bg-white rounded-xl border-2 border-gray-200 shadow-sm transition-all duration-200 appearance-none cursor-pointer dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 hover:border-gray-300 dark:hover:border-gray-400"
 													>
 														<option value="all" className="py-2">
 															All Status
@@ -693,9 +779,9 @@ const ReportsModal = ({ isOpen, onClose }) => {
 															Absent
 														</option>
 													</select>
-													<div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+													<div className="flex absolute inset-y-0 right-0 items-center pr-3 pointer-events-none">
 														<svg
-															className="w-5 h-5 text-gray-400 dark:text-gray-300 transition-transform duration-200"
+															className="w-5 h-5 text-gray-400 transition-transform duration-200 dark:text-gray-300"
 															fill="none"
 															stroke="currentColor"
 															viewBox="0 0 24 24"
@@ -715,20 +801,20 @@ const ReportsModal = ({ isOpen, onClose }) => {
 
 									{/* Search */}
 									<div className="relative">
-										<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+										<Search className="absolute left-3 top-1/2 w-4 h-4 text-gray-400 transform -translate-y-1/2" />
 										<input
 											type="text"
 											placeholder="Search students, ID, or tribe..."
 											value={searchQuery}
 											onChange={(e) => setSearchQuery(e.target.value)}
-											className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+											className="py-2 pr-4 pl-10 w-full text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
 										/>
 									</div>
 
 									{/* Statistics */}
 									<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 										<div className="p-4 bg-green-50 rounded-lg dark:bg-green-900/20">
-											<div className="flex items-center gap-3">
+											<div className="flex gap-3 items-center">
 												<CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
 												<div>
 													<p className="text-sm font-medium text-green-800 dark:text-green-300">
@@ -745,7 +831,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 											</div>
 										</div>
 										<div className="p-4 bg-red-50 rounded-lg dark:bg-red-900/20">
-											<div className="flex items-center gap-3">
+											<div className="flex gap-3 items-center">
 												<XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
 												<div>
 													<p className="text-sm font-medium text-red-800 dark:text-red-300">
@@ -769,25 +855,25 @@ const ReportsModal = ({ isOpen, onClose }) => {
 											<table className="w-full" id="attendance-table">
 												<thead className="bg-gray-50 dark:bg-gray-600">
 													<tr>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Student
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															ID
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Year Level
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Tribe
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Status
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Time In
 														</th>
-														<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+														<th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">
 															Time Out
 														</th>
 													</tr>
@@ -819,7 +905,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 															return (
 																<tr
 																	key={index}
-																	className="hover:bg-gray-50 dark:hover:bg-gray-600/50 transition-colors"
+																	className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-600/50"
 																>
 																	<td className="px-4 py-4 whitespace-nowrap">
 																		<div className="flex items-center">
@@ -845,17 +931,17 @@ const ReportsModal = ({ isOpen, onClose }) => {
 																			</div>
 																		</div>
 																	</td>
-																	<td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+																	<td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white">
 																		{record.student_id}
 																	</td>
-																	<td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+																	<td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white">
 																		{record.year_level}
 																	</td>
-																	<td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+																	<td className="px-4 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-white">
 																		{record.tribe_name || "No Tribe"}
 																	</td>
 																	<td className="px-4 py-4 whitespace-nowrap">
-																		<div className="flex items-center gap-2">
+																		<div className="flex gap-2 items-center">
 																			{getStatusIcon(record.status)}
 																			<span
 																				className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
@@ -867,7 +953,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 																		</div>
 																	</td>
 																	<td className="px-4 py-4 whitespace-nowrap">
-																		<div className="flex items-center gap-2">
+																		<div className="flex gap-2 items-center">
 																			<Clock className="w-4 h-4 text-blue-500" />
 																			<span className="text-xs text-gray-900 dark:text-white">
 																				{record.time_in
@@ -877,7 +963,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 																		</div>
 																	</td>
 																	<td className="px-4 py-4 whitespace-nowrap">
-																		<div className="flex items-center gap-2">
+																		<div className="flex gap-2 items-center">
 																			<Clock className="w-4 h-4 text-red-500" />
 																			<span className="text-xs text-gray-900 dark:text-white">
 																				{record.time_out
@@ -899,7 +985,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 
 									{/* Pagination */}
 									{filteredAttendanceData.length > studentsPerPage && (
-										<div className="flex items-center justify-between px-4 py-3 bg-white border-t dark:bg-gray-700 dark:border-gray-600">
+										<div className="flex justify-between items-center px-4 py-3 bg-white border-t dark:bg-gray-700 dark:border-gray-600">
 											<div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
 												<span>
 													Showing {indexOfFirstStudent + 1} to{" "}
@@ -910,13 +996,13 @@ const ReportsModal = ({ isOpen, onClose }) => {
 													of {filteredAttendanceData.length} students
 												</span>
 											</div>
-											<div className="flex items-center gap-2">
+											<div className="flex gap-2 items-center">
 												<button
 													onClick={() =>
 														setCurrentPage(Math.max(1, currentPage - 1))
 													}
 													disabled={currentPage === 1}
-													className="flex items-center px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500"
+													className="flex items-center px-3 py-1 text-sm font-medium text-gray-500 bg-white rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500"
 												>
 													<ChevronLeft className="w-4 h-4" />
 													Previous
@@ -943,7 +1029,7 @@ const ReportsModal = ({ isOpen, onClose }) => {
 														)
 													}
 													disabled={currentPage === totalPages}
-													className="flex items-center px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500"
+													className="flex items-center px-3 py-1 text-sm font-medium text-gray-500 bg-white rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500"
 												>
 													Next
 													<ChevronRight className="w-4 h-4" />
