@@ -84,26 +84,20 @@ export default function SharePostModal({
 
 			// Use uploadType from database to determine URL format
 			if (uploadType === "google_drive") {
-				// Try different Google Drive URL formats
-				const url1 = `https://drive.google.com/uc?id=${trimmed}`;
-				const url2 = `https://drive.google.com/file/d/${trimmed}/view?usp=sharing`;
-				const url3 = `https://drive.google.com/thumbnail?id=${trimmed}&sz=w1000`;
-
-				// Try the thumbnail format first as it's more likely to work
-				// If that doesn't work, we can try the direct file access format
-				return url3;
+				// Use thumbnail format for all Google Drive images for better compatibility
+				return `https://drive.google.com/thumbnail?id=${trimmed}&sz=w1000`;
 			}
 
 			// Fallback to filename pattern detection for backward compatibility
 			// If this looks like a Google Drive fileId (contains underscore and timestamp pattern)
 			if (trimmed && trimmed.includes("_") && trimmed.length >= 15) {
-				const url = `https://drive.google.com/uc?id=${trimmed}`;
-				return url;
+				// Use thumbnail format instead of uc format
+				return `https://drive.google.com/thumbnail?id=${trimmed}&sz=w1000`;
 			}
 			// If this looks like a Google Drive fileId (no dot extension, 25+ chars typical)
 			if (trimmed && trimmed.indexOf(".") === -1 && trimmed.length >= 20) {
-				const url = `https://drive.google.com/uc?id=${trimmed}`;
-				return url;
+				// Use thumbnail format instead of uc format
+				return `https://drive.google.com/thumbnail?id=${trimmed}&sz=w1000`;
 			}
 			// Else assume legacy local upload filename
 			const url = `${getDecryptedApiUrl()}/uploads/${trimmed}`;
@@ -113,11 +107,19 @@ export default function SharePostModal({
 
 		if (imageCount === 1) {
 			return (
-				<img
-					src={imageUrls[0]}
-					alt="Post"
-					className="object-cover w-full max-h-48 rounded-lg border"
-				/>
+				<div>
+					<img
+						src={imageUrls[0]}
+						alt="Post"
+						className="object-cover w-full max-h-48 rounded-lg border"
+						onLoad={() =>
+							console.log("Image loaded successfully:", imageUrls[0])
+						}
+						onError={(e) =>
+							console.error("Image failed to load:", imageUrls[0], e)
+						}
+					/>
+				</div>
 			);
 		}
 
@@ -130,6 +132,19 @@ export default function SharePostModal({
 							src={imageUrls[index]}
 							alt={`Post ${index + 1}`}
 							className="object-cover w-full h-24 rounded-lg border"
+							onLoad={() =>
+								console.log(
+									`Image ${index + 1} loaded successfully:`,
+									imageUrls[index]
+								)
+							}
+							onError={(e) =>
+								console.error(
+									`Image ${index + 1} failed to load:`,
+									imageUrls[index],
+									e
+								)
+							}
 						/>
 					))}
 				</div>
@@ -145,6 +160,19 @@ export default function SharePostModal({
 							src={imageUrls[index]}
 							alt={`Post ${index + 1}`}
 							className="object-cover w-full h-20 rounded-lg border"
+							onLoad={() =>
+								console.log(
+									`Image ${index + 1} loaded successfully:`,
+									imageUrls[index]
+								)
+							}
+							onError={(e) =>
+								console.error(
+									`Image ${index + 1} failed to load:`,
+									imageUrls[index],
+									e
+								)
+							}
 						/>
 					))}
 				</div>
@@ -160,6 +188,19 @@ export default function SharePostModal({
 							src={imageUrls[index]}
 							alt={`Post ${index + 1}`}
 							className="object-cover w-full h-20 rounded-lg border"
+							onLoad={() =>
+								console.log(
+									`Image ${index + 1} loaded successfully:`,
+									imageUrls[index]
+								)
+							}
+							onError={(e) =>
+								console.error(
+									`Image ${index + 1} failed to load:`,
+									imageUrls[index],
+									e
+								)
+							}
 						/>
 					))}
 				</div>
@@ -175,6 +216,19 @@ export default function SharePostModal({
 						src={imageUrls[index]}
 						alt={`Post ${index + 1}`}
 						className="object-cover w-full h-20 rounded-lg border"
+						onLoad={() =>
+							console.log(
+								`Image ${index + 1} loaded successfully:`,
+								imageUrls[index]
+							)
+						}
+						onError={(e) =>
+							console.error(
+								`Image ${index + 1} failed to load:`,
+								imageUrls[index],
+								e
+							)
+						}
 					/>
 				))}
 				{imageCount > 4 && (
@@ -183,6 +237,12 @@ export default function SharePostModal({
 							src={imageUrls[4]}
 							alt="Post 5"
 							className="object-cover w-full h-20 rounded-lg border"
+							onLoad={() =>
+								console.log(`Image 5 loaded successfully:`, imageUrls[4])
+							}
+							onError={(e) =>
+								console.error(`Image 5 failed to load:`, imageUrls[4], e)
+							}
 						/>
 						<div className="flex absolute inset-0 justify-center items-center bg-black bg-opacity-50 rounded-lg">
 							<span className="text-sm font-bold text-white">
