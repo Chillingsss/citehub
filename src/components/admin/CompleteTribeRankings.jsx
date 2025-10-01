@@ -115,7 +115,7 @@ const CompleteTribeRankings = ({
 																	No activities found for this tribe.
 																</p>
 															) : (
-																<div className="space-y-3">
+																<div className="space-y-3 max-h-80 overflow-y-auto pr-2">
 																	{tribeActivities[tribe.tribe_id].map(
 																		(activity, index) => (
 																			<div
@@ -292,7 +292,7 @@ const CompleteTribeRankings = ({
 																No activities found for this tribe.
 															</p>
 														) : (
-															<div className="space-y-3">
+															<div className="space-y-3 max-h-80 overflow-y-auto pr-2">
 																{tribeActivities[tribe.tribe_id].map(
 																	(activity, index) => (
 																		<div
