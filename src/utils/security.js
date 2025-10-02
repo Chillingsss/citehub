@@ -158,7 +158,7 @@ export async function sendPasswordResetOtpMail(email, fullName) {
 		typeof window !== "undefined" ? window.location.hostname : "";
 	const isLocal = /^(localhost|127\.0\.0\.1)$/i.test(hostname);
 	const baseOverride = process.env.REACT_APP_MAIL_API_BASE;
-	console.log("baseOverride", baseOverride);
+	// console.log("baseOverride", baseOverride);
 	const endpoint = baseOverride
 		? `${baseOverride.replace(/\/$/, "")}/api/send-password-reset-otp`
 		: isLocal
